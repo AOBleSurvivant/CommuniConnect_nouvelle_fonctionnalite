@@ -1,0 +1,136 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const http = require('http');
+const socketIo = require('socket.io');
+const NotificationService = require('./services/notificationService');
+const MessageSocketService = require('./services/messageSocketService');
+const PushNotificationService = require('./services/pushNotificationService');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+
+// Configuration Socket.IO avec CORS
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST"]
+  }
+});
+
+// Initialiser les services avec l'instance io
+const notificationService = new NotificationService(io);
+const messageSocketService = new MessageSocketService(io);
+const pushNotificationService = new PushNotificationService();
+
+const PORT = process.env.PORT || 5000;
+
+// Middleware de sécurité et de performance
+app.use(helmet());
+app.use(compression());
+app.use(morgan('combined'));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limite chaque IP à 100 requêtes par fenêtre
+  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
+});
+app.use('/api/', limiter);
+
+// CORS pour Express
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  credentials: true
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Connexion à MongoDB (optionnelle en mode développement)
+const connectToMongoDB = async () => {
+  try {
+    const mongoose = require('mongoose'); // Import here to make it optional
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/communiconnect', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ Connexion à MongoDB établie');
+    return true;
+  } catch (error) {
+    console.warn('⚠️ MongoDB non disponible:', error.message);
+    console.log('📝 Mode développement: L\'application fonctionne sans base de données');
+    return false;
+  }
+};
+
+// Routes API
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/posts', require('./routes/posts'));
+app.use('/api/alerts', require('./routes/alerts'));
+app.use('/api/events', require('./routes/events'));
+app.use('/api/livestreams', require('./routes/livestreams'));
+app.use('/api/help', require('./routes/help'));
+app.use('/api/locations', require('./routes/locations'));
+app.use('/api/moderation', require('./routes/moderation'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/moderation', require('./routes/advancedModeration'));
+app.use('/api/search', require('./routes/search'));
+app.use('/api/stats', require('./routes/stats'));
+
+// Route de test
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'CommuniConnect API fonctionne correctement',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Rendre les services disponibles globalement
+global.notificationService = notificationService;
+global.messageSocketService = messageSocketService;
+global.pushNotificationService = pushNotificationService;
+
+// Broadcast des statistiques toutes les 30 secondes
+setInterval(() => {
+  notificationService.broadcastStats();
+}, 30000);
+
+// Middleware de gestion d'erreurs
+app.use((err, req, res, next) => {
+  console.error('❌ Erreur serveur:', err);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Erreur interne du serveur' 
+  });
+});
+
+// Route 404
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: 'Route non trouvée' 
+  });
+});
+
+// Démarrage du serveur
+const startServer = async () => {
+  global.mongoConnected = await connectToMongoDB(); // Store MongoDB connection status
+  server.listen(PORT, () => {
+    console.log(`🚀 Serveur CommuniConnect démarré sur le port ${PORT}`);
+    console.log(`📱 Mode: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌍 API disponible sur: http://localhost:${PORT}`);
+    console.log(`🔌 Socket.IO actif sur: http://localhost:${PORT}`);
+  });
+};
+
+startServer(); // Call to start the server 
