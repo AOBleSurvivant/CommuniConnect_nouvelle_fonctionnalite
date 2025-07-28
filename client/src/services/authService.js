@@ -39,13 +39,36 @@ authAPI.interceptors.response.use(
 const authService = {
   // Inscription
   register: async (userData) => {
-    const response = await authAPI.post('/register', userData);
+    // Adapter les données pour correspondre au format attendu par le backend
+    const registerData = {
+      email: userData.email,
+      password: userData.password,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      phone: userData.phone,
+      region: userData.region,
+      prefecture: userData.prefecture,
+      commune: userData.commune,
+      quartier: userData.quartier,
+      address: userData.address,
+      latitude: userData.latitude,
+      longitude: userData.longitude,
+      dateOfBirth: userData.dateOfBirth || '1990-01-01',
+      gender: userData.gender || 'Homme'
+    };
+    
+    const response = await authAPI.post('/register', registerData);
     return response;
   },
 
   // Connexion
   login: async (credentials) => {
-    const response = await authAPI.post('/login', credentials);
+    // Adapter les données pour correspondre à l'API backend
+    const loginData = {
+      identifier: credentials.email || credentials.phone || credentials.identifier,
+      password: credentials.password
+    };
+    const response = await authAPI.post('/login', loginData);
     return response;
   },
 
@@ -64,6 +87,16 @@ const authService = {
   // Mettre à jour le profil
   updateProfile: async (profileData) => {
     const response = await authAPI.put('/profile', profileData);
+    return response;
+  },
+
+  // Mettre à jour la photo de profil
+  updateProfilePicture: async (formData) => {
+    const response = await authAPI.put('/profile/picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response;
   },
 

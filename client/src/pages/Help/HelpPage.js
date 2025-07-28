@@ -90,6 +90,7 @@ import {
   Verified,
 } from '@mui/icons-material';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import LocationSelector from '../../components/common/LocationSelector';
 
 const HelpPage = () => {
   const theme = useTheme();
@@ -120,8 +121,8 @@ const HelpPage = () => {
     location: {
       region: user?.region || 'Conakry',
       prefecture: user?.prefecture || 'Conakry',
-      commune: user?.commune || 'Kaloum',
-      quartier: user?.quartier || 'Centre',
+      commune: user?.commune || '',
+      quartier: user?.quartier || '',
       address: '',
     },
     contactInfo: {
@@ -290,13 +291,32 @@ const HelpPage = () => {
   };
 
   const handleLocationChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      location: {
-        ...prev.location,
-        [field]: value
+    setFormData(prev => {
+      const newLocation = { ...prev.location, [field]: value };
+      
+      // Réinitialiser les champs dépendants quand un niveau supérieur change
+      if (field === 'region') {
+        newLocation.prefecture = '';
+        newLocation.commune = '';
+        newLocation.quartier = '';
+        newLocation.address = '';
+      } else if (field === 'prefecture') {
+        newLocation.commune = '';
+        newLocation.quartier = '';
+        newLocation.address = '';
+      } else if (field === 'commune') {
+        newLocation.quartier = '';
+        newLocation.address = '';
+      } else if (field === 'quartier') {
+        // Générer automatiquement l'adresse complète
+        newLocation.address = `${value}, ${newLocation.commune}, ${newLocation.prefecture}, ${newLocation.region}, Guinée`;
       }
-    }));
+      
+      return {
+        ...prev,
+        location: newLocation
+      };
+    });
   };
 
   const handleContactChange = (field, value) => {
@@ -776,60 +796,26 @@ const HelpPage = () => {
               </Typography>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Région</InputLabel>
-                <Select
-                  value={formData.location.region}
-                  onChange={(e) => handleLocationChange('region', e.target.value)}
-                  label="Région"
-                >
-                  <MenuItem value="Conakry">Conakry</MenuItem>
-                  <MenuItem value="Boké">Boké</MenuItem>
-                  <MenuItem value="Kindia">Kindia</MenuItem>
-                  <MenuItem value="Mamou">Mamou</MenuItem>
-                  <MenuItem value="Labé">Labé</MenuItem>
-                  <MenuItem value="Faranah">Faranah</MenuItem>
-                  <MenuItem value="Kankan">Kankan</MenuItem>
-                  <MenuItem value="N'Zérékoré">N'Zérékoré</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Préfecture"
-                value={formData.location.prefecture}
-                onChange={(e) => handleLocationChange('prefecture', e.target.value)}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Commune"
-                value={formData.location.commune}
-                onChange={(e) => handleLocationChange('commune', e.target.value)}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Quartier"
-                value={formData.location.quartier}
-                onChange={(e) => handleLocationChange('quartier', e.target.value)}
+            {/* Localisation */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Localisation
+              </Typography>
+              <LocationSelector 
+                formData={formData.location}
+                handleInputChange={(e) => {
+                  const { name, value } = e.target;
+                  handleLocationChange(name, value);
+                }}
+                showGPS={true}
+                required={true}
               />
             </Grid>
 
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Adresse complète"
-                value={formData.location.address}
-                onChange={(e) => handleLocationChange('address', e.target.value)}
-              />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                L'adresse complète sera générée automatiquement après la sélection du quartier.
+              </Typography>
             </Grid>
 
             <Grid item xs={12}>

@@ -24,6 +24,7 @@ import {
 import CreatePost from '../../components/Posts/CreatePost';
 import PostCard from '../../components/Posts/PostCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { formatError } from '../../utils/errorHandler';
 
 const FeedPage = () => {
   const theme = useTheme();
@@ -291,10 +292,20 @@ const FeedPage = () => {
         </Typography>
       </Box>
 
-      {/* Message d'erreur */}
+      {/* Messages d'état */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')} >
+          {formatError(error)}
+        </Alert>
+      )}
+
+      {snackbar.open && (
+        <Alert
+          severity={snackbar.severity}
+          sx={{ mb: 2 }}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
         </Alert>
       )}
 

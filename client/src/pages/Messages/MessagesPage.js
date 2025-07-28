@@ -31,7 +31,10 @@ import {
   Chat as ChatIcon,
   Group as GroupIcon,
   LocationOn as LocationIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  AttachFile as AttachFileIcon,
+  Image as ImageIcon,
+  VideoLibrary as VideoLibraryIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -43,7 +46,9 @@ import {
   selectCurrentConversation,
   selectMessagesLoading,
   selectMessagesError,
-  selectUnreadCount
+  selectUnreadCount,
+  clearError,
+  clearSuccess
 } from '../../store/slices/messagesSlice';
 import {
   selectConversationMessages,
@@ -57,6 +62,7 @@ import ConversationHeader from '../../components/Messages/ConversationHeader';
 import TypingIndicator from '../../components/Messages/TypingIndicator';
 import ConnectionStatus from '../../components/Messages/ConnectionStatus';
 import useMessageSocket from '../../hooks/useMessageSocket';
+import { formatError } from '../../utils/errorHandler';
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
@@ -64,6 +70,7 @@ const MessagesPage = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [attachments, setAttachments] = useState([]);
 
   // Sélecteurs Redux
   const conversations = useSelector(selectConversations);
@@ -74,6 +81,7 @@ const MessagesPage = () => {
   const unreadCount = useSelector(selectUnreadCount);
   const messages = useSelector(selectConversationMessages(selectedConversationId));
   const user = useSelector(state => state.auth.user);
+  const success = useSelector(state => state.messages.success);
 
   // Hook Socket.IO
   const {
@@ -107,14 +115,35 @@ const MessagesPage = () => {
 
   // Gérer l'envoi d'un message
   const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversationId) return;
+    if ((!newMessage.trim() && attachments.length === 0) || !selectedConversationId) return;
 
     dispatch(sendMessage({
       conversationId: selectedConversationId,
-      content: newMessage.trim()
+      content: newMessage.trim(),
+      attachments: attachments
     }));
 
     setNewMessage('');
+    setAttachments([]);
+  };
+
+  // Gérer l'upload de fichiers
+  const handleFileUpload = (event) => {
+    const files = Array.from(event.target.files);
+    const newAttachments = files.map(file => ({
+      file: file,
+      filename: file.name,
+      type: file.type,
+      size: file.size
+    }));
+    
+    setAttachments(prev => [...prev, ...newAttachments]);
+    event.target.value = ''; // Reset input
+  };
+
+  // Supprimer un fichier attaché
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   // Gérer la sélection d'une conversation
@@ -253,9 +282,16 @@ const MessagesPage = () => {
 
             {/* Liste des conversations */}
             <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+              {/* Messages d'erreur/succès */}
               {error && (
-                <Alert severity="error" sx={{ m: 2 }}>
-                  {error}
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => dispatch(clearError())}>
+                  {formatError(error)}
+                </Alert>
+              )}
+
+              {success && (
+                <Alert severity="success" sx={{ mb: 2 }} onClose={() => dispatch(clearSuccess())}>
+                  {typeof success === 'string' ? success : 'Opération réussie'}
                 </Alert>
               )}
 
@@ -383,7 +419,68 @@ const MessagesPage = () => {
 
               {/* Zone de saisie */}
               <Box sx={{ p: 2 }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                {/* Aperçu des fichiers attachés */}
+                {attachments.length > 0 && (
+                  <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {attachments.map((attachment, index) => (
+                      <Chip
+                        key={index}
+                        label={attachment.filename}
+                        onDelete={() => removeAttachment(index)}
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                      />
+                    ))}
+                  </Box>
+                )}
+
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                  {/* Boutons d'attachement */}
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <input
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      id="image-upload-message"
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                    />
+                    <label htmlFor="image-upload-message">
+                      <IconButton component="span" size="small">
+                        <ImageIcon />
+                      </IconButton>
+                    </label>
+
+                    <input
+                      accept="video/*"
+                      style={{ display: 'none' }}
+                      id="video-upload-message"
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                    />
+                    <label htmlFor="video-upload-message">
+                      <IconButton component="span" size="small">
+                        <VideoLibraryIcon />
+                      </IconButton>
+                    </label>
+
+                    <input
+                      accept=".pdf,.doc,.docx,.txt"
+                      style={{ display: 'none' }}
+                      id="file-upload-message"
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                    />
+                    <label htmlFor="file-upload-message">
+                      <IconButton component="span" size="small">
+                        <AttachFileIcon />
+                      </IconButton>
+                    </label>
+                  </Box>
+
                                 <TextField
                 fullWidth
                 multiline
@@ -397,7 +494,7 @@ const MessagesPage = () => {
                   <IconButton
                     color="primary"
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || !selectedConversationId}
+                    disabled={(!newMessage.trim() && attachments.length === 0) || !selectedConversationId}
                   >
                     <SendIcon />
                   </IconButton>

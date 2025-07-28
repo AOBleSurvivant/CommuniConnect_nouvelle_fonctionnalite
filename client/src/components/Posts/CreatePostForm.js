@@ -29,6 +29,8 @@ import {
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { createPost, updatePost, clearError, clearSuccess } from '../../store/slices/postsSlice';
+import { formatError } from '../../utils/errorHandler';
+import LocationSelector from '../common/LocationSelector';
 
 const CreatePostForm = ({ open, onClose, editPost = null }) => {
   const dispatch = useDispatch();
@@ -38,13 +40,13 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
   const [formData, setFormData] = useState({
     content: '',
     type: 'community',
-    location: {
-      region: user?.region || 'Conakry',
-      prefecture: user?.prefecture || 'Conakry',
-      commune: user?.commune || 'Kaloum',
-      quartier: user?.quartier || 'Centre',
-      coordinates: user?.coordinates || { latitude: 9.5144, longitude: -13.6783 }
-    },
+    region: '',
+    prefecture: '',
+    commune: '',
+    quartier: '',
+    address: '',
+    latitude: '',
+    longitude: '',
     isPublic: true
   });
 
@@ -56,7 +58,13 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
       setFormData({
         content: editPost.content,
         type: editPost.type,
-        location: editPost.location,
+        region: editPost.location?.region || '',
+        prefecture: editPost.location?.prefecture || '',
+        commune: editPost.location?.commune || '',
+        quartier: editPost.location?.quartier || '',
+        address: editPost.location?.address || '',
+        latitude: editPost.location?.coordinates?.latitude || '',
+        longitude: editPost.location?.coordinates?.longitude || '',
         isPublic: editPost.isPublic
       });
       setMediaFiles(editPost.media || []);
@@ -64,13 +72,13 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
       setFormData({
         content: '',
         type: 'community',
-        location: {
-          region: user?.region || 'Conakry',
-          prefecture: user?.prefecture || 'Conakry',
-          commune: user?.commune || 'Kaloum',
-          quartier: user?.quartier || 'Centre',
-          coordinates: user?.coordinates || { latitude: 9.5144, longitude: -13.6783 }
-        },
+        region: user?.region || '',
+        prefecture: user?.prefecture || '',
+        commune: user?.commune || '',
+        quartier: user?.quartier || '',
+        address: user?.address || '',
+        latitude: user?.latitude || '',
+        longitude: user?.longitude || '',
         isPublic: true
       });
       setMediaFiles([]);
@@ -89,22 +97,12 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
     }
   }, [error, success, dispatch]);
 
-  const handleInputChange = (field, value) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -115,7 +113,20 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
     }
 
     const postData = {
-      ...formData,
+      content: formData.content,
+      type: formData.type,
+      location: {
+        region: formData.region,
+        prefecture: formData.prefecture,
+        commune: formData.commune,
+        quartier: formData.quartier,
+        address: formData.address,
+        coordinates: {
+          latitude: parseFloat(formData.latitude) || null,
+          longitude: parseFloat(formData.longitude) || null
+        }
+      },
+      isPublic: formData.isPublic,
       media: mediaFiles
     };
 
@@ -125,107 +136,67 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
       await dispatch(createPost(postData));
     }
 
-    // Fermer le formulaire si succès
     if (!error) {
-      handleClose();
+      setFormData({
+        content: '',
+        type: 'community',
+        region: user?.region || '',
+        prefecture: user?.prefecture || '',
+        commune: user?.commune || '',
+        quartier: user?.quartier || '',
+        address: user?.address || '',
+        latitude: user?.latitude || '',
+        longitude: user?.longitude || '',
+        isPublic: true
+      });
+      setMediaFiles([]);
+      onClose();
     }
   };
 
-  const handleClose = () => {
-    setFormData({
-      content: '',
-      type: 'community',
-      location: {
-        region: user?.region || 'Conakry',
-        prefecture: user?.prefecture || 'Conakry',
-        commune: user?.commune || 'Kaloum',
-        quartier: user?.quartier || 'Centre',
-        coordinates: user?.coordinates || { latitude: 9.5144, longitude: -13.6783 }
-      },
-      isPublic: true
-    });
-    setMediaFiles([]);
-    onClose();
-  };
-
-  const handleFileUpload = (event) => {
+  const handleMediaUpload = (event) => {
     const files = Array.from(event.target.files);
-    // TODO: Implémenter l'upload de fichiers avec Cloudinary
-    console.log('Fichiers sélectionnés:', files);
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/') || file.type.startsWith('video/');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+      return isValidType && isValidSize;
+    });
+
+    setMediaFiles(prev => [...prev, ...validFiles]);
   };
 
-  const removeMediaFile = (index) => {
+  const removeMedia = (index) => {
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const getTypeInfo = (type) => {
-    const types = {
-      community: { label: 'Communauté', color: 'primary' },
-      alert: { label: 'Alerte', color: 'error' },
-      event: { label: 'Événement', color: 'success' },
-      help: { label: 'Aide', color: 'warning' },
-      announcement: { label: 'Annonce', color: 'info' }
-    };
-    return types[type] || { label: 'Post', color: 'default' };
-  };
+  const postTypes = [
+    { value: 'community', label: 'Communautaire', color: 'primary' },
+    { value: 'news', label: 'Actualités', color: 'info' },
+    { value: 'event', label: 'Événement', color: 'secondary' },
+    { value: 'help', label: 'Demande d\'aide', color: 'warning' },
+    { value: 'announcement', label: 'Annonce', color: 'success' }
+  ];
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose}
-      maxWidth="md"
-      fullWidth
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6">
             {editPost ? 'Modifier le post' : 'Créer un nouveau post'}
           </Typography>
-          <IconButton onClick={handleClose}>
+          <IconButton onClick={onClose}>
             <Close />
           </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent>
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-          {/* Messages d'erreur/succès */}
+      <form onSubmit={handleSubmit}>
+        <DialogContent>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+              {formatError(error)}
             </Alert>
           )}
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {success}
-            </Alert>
-          )}
-
-          {/* Type de post */}
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Type de post</InputLabel>
-            <Select
-              value={formData.type}
-              onChange={(e) => handleInputChange('type', e.target.value)}
-              label="Type de post"
-            >
-              <MenuItem value="community">
-                <Chip label="Communauté" color="primary" size="small" />
-              </MenuItem>
-              <MenuItem value="alert">
-                <Chip label="Alerte" color="error" size="small" />
-              </MenuItem>
-              <MenuItem value="event">
-                <Chip label="Événement" color="success" size="small" />
-              </MenuItem>
-              <MenuItem value="help">
-                <Chip label="Aide" color="warning" size="small" />
-              </MenuItem>
-              <MenuItem value="announcement">
-                <Chip label="Annonce" color="info" size="small" />
-              </MenuItem>
-            </Select>
-          </FormControl>
 
           {/* Contenu du post */}
           <TextField
@@ -234,168 +205,153 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
             rows={4}
             label="Que voulez-vous partager ?"
             value={formData.content}
-            onChange={(e) => handleInputChange('content', e.target.value)}
-            placeholder="Partagez vos pensées, questions, ou informations avec votre communauté..."
-            sx={{ mb: 2 }}
-            required
+            onChange={handleInputChange}
+            name="content"
+            placeholder="Partagez vos pensées, actualités, événements..."
+            sx={{ mb: 3 }}
           />
 
+          {/* Type de post */}
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel>Type de post</InputLabel>
+            <Select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              label="Type de post"
+            >
+              {postTypes.map((type) => (
+                <MenuItem key={type.value} value={type.value}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip 
+                      label={type.label} 
+                      size="small" 
+                      color={type.color} 
+                      variant="outlined"
+                    />
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           {/* Localisation */}
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Localisation
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Région"
-                value={formData.location.region}
-                onChange={(e) => handleInputChange('location.region', e.target.value)}
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Préfecture"
-                value={formData.location.prefecture}
-                onChange={(e) => handleInputChange('location.prefecture', e.target.value)}
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Commune"
-                value={formData.location.commune}
-                onChange={(e) => handleInputChange('location.commune', e.target.value)}
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Quartier"
-                value={formData.location.quartier}
-                onChange={(e) => handleInputChange('location.quartier', e.target.value)}
-                size="small"
-              />
-            </Grid>
-          </Grid>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Localisation
+            </Typography>
+            <LocationSelector 
+              formData={formData}
+              handleInputChange={handleInputChange}
+              showGPS={true}
+              required={false}
+            />
+          </Box>
 
           {/* Médias */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Ajouter des médias
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Médias (optionnel)
             </Typography>
-            <Box display="flex" gap={1}>
+            
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
               <input
                 accept="image/*,video/*"
                 style={{ display: 'none' }}
-                id="image-upload"
+                id="media-upload"
                 type="file"
                 multiple
-                onChange={handleFileUpload}
+                onChange={handleMediaUpload}
               />
-              <label htmlFor="image-upload">
+              <label htmlFor="media-upload">
                 <Button
                   variant="outlined"
                   component="span"
                   startIcon={<Image />}
-                  size="small"
                 >
-                  Images
-                </Button>
-              </label>
-
-              <input
-                accept="video/*"
-                style={{ display: 'none' }}
-                id="video-upload"
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="video-upload">
-                <Button
-                  variant="outlined"
-                  component="span"
-                  startIcon={<VideoLibrary />}
-                  size="small"
-                >
-                  Vidéos
-                </Button>
-              </label>
-
-              <input
-                accept=".pdf,.doc,.docx,.txt"
-                style={{ display: 'none' }}
-                id="file-upload"
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="file-upload">
-                <Button
-                  variant="outlined"
-                  component="span"
-                  startIcon={<AttachFile />}
-                  size="small"
-                >
-                  Documents
+                  Photos/Vidéos
                 </Button>
               </label>
             </Box>
 
-            {/* Aperçu des fichiers */}
+            {/* Aperçu des médias */}
             {mediaFiles.length > 0 && (
-              <Box mt={2}>
-                <Typography variant="caption" color="text.secondary">
-                  Fichiers attachés ({mediaFiles.length})
-                </Typography>
-                <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
-                  {mediaFiles.map((file, index) => (
-                    <Chip
-                      key={index}
-                      label={file.name || `Fichier ${index + 1}`}
-                      onDelete={() => removeMediaFile(index)}
-                      size="small"
-                    />
-                  ))}
-                </Box>
-              </Box>
+              <Grid container spacing={1}>
+                {mediaFiles.map((file, index) => (
+                  <Grid item xs={6} sm={4} md={3} key={index}>
+                    <Box sx={{ position: 'relative' }}>
+                      {file.type.startsWith('image/') ? (
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Media ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '100px',
+                            objectFit: 'cover',
+                            borderRadius: '8px'
+                          }}
+                        />
+                      ) : (
+                        <video
+                          src={URL.createObjectURL(file)}
+                          style={{
+                            width: '100%',
+                            height: '100px',
+                            objectFit: 'cover',
+                            borderRadius: '8px'
+                          }}
+                        />
+                      )}
+                      <IconButton
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          bgcolor: 'rgba(0,0,0,0.5)',
+                          color: 'white',
+                          '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' }
+                        }}
+                        onClick={() => removeMedia(index)}
+                      >
+                        <Close fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
             )}
           </Box>
 
-          {/* Visibilité */}
+          {/* Paramètres de visibilité */}
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Visibilité</InputLabel>
             <Select
+              name="isPublic"
               value={formData.isPublic}
-              onChange={(e) => handleInputChange('isPublic', e.target.value)}
+              onChange={(e) => setFormData(prev => ({ ...prev, isPublic: e.target.value }))}
               label="Visibilité"
             >
               <MenuItem value={true}>Public</MenuItem>
-              <MenuItem value={false}>Privé (amis uniquement)</MenuItem>
+              <MenuItem value={false}>Privé</MenuItem>
             </Select>
           </FormControl>
-        </Box>
-      </DialogContent>
+        </DialogContent>
 
-      <DialogActions>
-        <Button onClick={handleClose}>
-          Annuler
-        </Button>
-        <Button
-          type="submit"
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={loading || !formData.content.trim()}
-          startIcon={editPost ? <Edit /> : <Send />}
-        >
-          {loading ? 'Envoi...' : (editPost ? 'Modifier' : 'Publier')}
-        </Button>
-      </DialogActions>
+        <DialogActions>
+          <Button onClick={onClose}>
+            Annuler
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !formData.content.trim()}
+            startIcon={<Send />}
+          >
+            {loading ? 'Publication...' : (editPost ? 'Modifier' : 'Publier')}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 };

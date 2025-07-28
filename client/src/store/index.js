@@ -6,6 +6,7 @@ import eventsReducer from './slices/eventsSlice';
 import helpReducer from './slices/helpSlice';
 import mapReducer from './slices/mapSlice';
 import uiReducer from './slices/uiSlice';
+import friendsReducer from './slices/friendsSlice';
 import livestreamsReducer from './slices/livestreamsSlice';
 import moderationReducer from './slices/moderationSlice';
 import notificationsReducer from './slices/notificationsSlice';
@@ -20,6 +21,7 @@ export const store = configureStore({
     help: helpReducer,
     map: mapReducer,
     ui: uiReducer,
+  friends: friendsReducer,
     livestreams: livestreamsReducer,
     moderation: moderationReducer,
     notifications: notificationsReducer,

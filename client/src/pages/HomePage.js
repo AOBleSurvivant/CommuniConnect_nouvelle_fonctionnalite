@@ -241,15 +241,17 @@ const HomePage = () => {
             </Box>
           }
           secondary={
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <span>
+              <span style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
                 <LocationOn sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
+                <span style={{ fontSize: '0.875rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {alert.location}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
+                </span>
+              </span>
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {alert.time}
-              </Typography>
-            </Box>
+              </span>
+            </span>
           }
         />
         <Chip
@@ -289,20 +291,26 @@ const HomePage = () => {
             </Typography>
           }
           secondary={
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <span>
+              <span style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
                 <Schedule sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
+                <span style={{ fontSize: '0.875rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {event.date} à {event.time}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+                </span>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
                 <LocationOn sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
+                <span style={{ fontSize: '0.875rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {event.location}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
+                </span>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center' }}>
                 <People sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+                <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {event.participants} participants
-              </Typography>
-            </Box>
+                </span>
+              </span>
+            </span>
           }
         />
         <Button
@@ -382,7 +390,7 @@ const HomePage = () => {
               variant="contained"
               fullWidth
               startIcon={<Add />}
-              onClick={() => navigate('/alerts/new')}
+              onClick={() => navigate('/alerts')}
               sx={{ py: 1.5 }}
             >
               Créer une alerte
@@ -393,7 +401,7 @@ const HomePage = () => {
               variant="outlined"
               fullWidth
               startIcon={<Event />}
-              onClick={() => navigate('/events/new')}
+              onClick={() => navigate('/events')}
               sx={{ py: 1.5 }}
             >
               Créer un événement
@@ -404,7 +412,7 @@ const HomePage = () => {
               variant="outlined"
               fullWidth
               startIcon={<Help />}
-              onClick={() => navigate('/help/new')}
+              onClick={() => navigate('/help')}
               sx={{ py: 1.5 }}
             >
               Demander de l'aide

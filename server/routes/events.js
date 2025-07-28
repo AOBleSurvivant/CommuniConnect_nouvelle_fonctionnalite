@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
-const { authMiddleware: auth } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 const { validateGuineanLocation } = require('../middleware/geographicValidation');
 const Event = require('../models/Event');
 const User = require('../models/User');

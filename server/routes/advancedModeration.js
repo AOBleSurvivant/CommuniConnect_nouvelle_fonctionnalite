@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware: auth } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const ModerationLog = require('../models/ModerationLog');

@@ -1,6 +1,6 @@
 import api from './api';
 
-const EVENTS_ENDPOINT = '/events';
+const EVENTS_ENDPOINT = '/api/events';
 
 export const eventsService = {
   // Obtenir tous les événements avec filtres

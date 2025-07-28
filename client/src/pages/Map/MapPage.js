@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -32,6 +33,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const MapPage = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -164,6 +166,7 @@ const MapPage = () => {
           icon={<Event />}
           tooltipTitle="Créer un événement"
           onClick={() => {
+            navigate('/events');
             setSnackbar({
               open: true,
               message: 'Redirection vers la création d\'événement...',
@@ -175,6 +178,7 @@ const MapPage = () => {
           icon={<Warning />}
           tooltipTitle="Créer une alerte"
           onClick={() => {
+            navigate('/alerts');
             setSnackbar({
               open: true,
               message: 'Redirection vers la création d\'alerte...',

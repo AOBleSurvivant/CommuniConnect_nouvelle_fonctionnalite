@@ -1,24 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import {
   Box,
   Typography,
-  Container,
   Grid,
   Card,
   CardContent,
-  CardHeader,
-  Tabs,
-  Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
+  CardActions,
   Button,
+  Chip,
   IconButton,
   Dialog,
   DialogTitle,
@@ -30,570 +19,641 @@ import {
   Select,
   MenuItem,
   Alert,
-  Snackbar,
-  Badge,
-  Avatar,
+  CircularProgress,
+  Tabs,
+  Tab,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
+  Avatar,
   Divider,
-  useTheme,
-  Tooltip,
-  Fab,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
+  Badge,
+  Switch,
+  FormControlLabel,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import {
-  AdminPanelSettings,
-  Warning,
-  Block,
-  CheckCircle,
-  Delete,
-  Edit,
-  Visibility,
-  Flag,
-  Report,
-  Person,
-  Article as Post,
-  Event,
-  LiveTv,
-  Notifications,
-  Refresh,
-  FilterList,
-  Search,
-  MoreVert,
-  Close,
-  Check,
-  Clear,
-  Archive,
-  RestoreFromTrash,
-  Security,
-  Shield,
-  Gavel,
-  Analytics,
-  TrendingUp,
-  TrendingDown,
-  People,
-  Message,
-  ThumbUp,
-  ThumbDown,
+  Security as SecurityIcon,
+  Warning as WarningIcon,
+  Block as BlockIcon,
+  CheckCircle as CheckCircleIcon,
+  Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
+  Report as ReportIcon,
+  Flag as FlagIcon,
+  Settings as SettingsIcon,
+  Refresh as RefreshIcon,
+  FilterList as FilterIcon,
+  Search as SearchIcon,
+  Person as PersonIcon,
+  Message as MessageIcon,
+  PostAdd as PostIcon,
+  LiveTv as LiveIcon,
+  Event as EventIcon
 } from '@mui/icons-material';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useDispatch, useSelector } from 'react-redux';
+import { formatError } from '../../utils/errorHandler';
 
 const ModerationPage = () => {
-  const theme = useTheme();
-  const { user } = useSelector((state) => state.auth);
-  
   const [activeTab, setActiveTab] = useState(0);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [actionType, setActionType] = useState('');
+  const [actionReason, setActionReason] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [autoModeration, setAutoModeration] = useState(true);
+
+  const { user } = useSelector(state => state.auth);
   const [loading, setLoading] = useState(false);
-  const [reports, setReports] = useState([]);
-  const [moderatedContent, setModeratedContent] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [stats, setStats] = useState({
-    totalReports: 0,
-    pendingReports: 0,
-    resolvedReports: 0,
-    activeUsers: 0,
-    moderatedContent: 0,
-    bannedUsers: 0,
-  });
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   // Données fictives pour la démonstration
-  useEffect(() => {
-    setLoading(true);
-    
-    // Simuler le chargement des données
-    setTimeout(() => {
-      setReports([
-        {
-          id: 1,
+  const [reports, setReports] = useState([
+    {
+      id: '1',
           type: 'post',
-          content: {
-            id: 'post1',
-            title: 'Publication inappropriée',
-            author: { name: 'Utilisateur A', avatar: null },
-            content: 'Contenu signalé...',
-            createdAt: new Date(Date.now() - 86400000),
-          },
-          reporter: { name: 'Utilisateur B', avatar: null },
-          reason: 'inappropriate',
-          description: 'Contenu inapproprié pour la communauté',
-          status: 'pending',
-          createdAt: new Date(Date.now() - 3600000),
-          priority: 'high',
-        },
-        {
-          id: 2,
-          type: 'alert',
-          content: {
-            id: 'alert1',
-            title: 'Fausse alerte',
-            author: { name: 'Utilisateur C', avatar: null },
-            description: 'Alerte signalée comme fausse',
-            createdAt: new Date(Date.now() - 172800000),
-          },
-          reporter: { name: 'Utilisateur D', avatar: null },
-          reason: 'false_information',
-          description: 'Cette alerte contient des informations erronées',
-          status: 'resolved',
-          createdAt: new Date(Date.now() - 7200000),
-          priority: 'medium',
-          resolution: 'alert_hidden',
-        },
-        {
-          id: 3,
-          type: 'user',
-          content: {
-            id: 'user1',
-            name: 'Utilisateur E',
-            email: 'user@example.com',
-            role: 'user',
-            status: 'active',
-            createdAt: new Date(Date.now() - 259200000),
-          },
-          reporter: { name: 'Utilisateur F', avatar: null },
-          reason: 'harassment',
-          description: 'Comportement harcelant envers d\'autres utilisateurs',
-          status: 'pending',
-          createdAt: new Date(Date.now() - 1800000),
-          priority: 'high',
-        },
-      ]);
+      status: 'pending',
+      severity: 'high',
+      reporter: { name: 'Mamadou Diallo', avatar: null },
+      reportedItem: {
+        id: 'post-1',
+        title: 'Post inapproprié',
+        content: 'Contenu signalé comme inapproprié...',
+        author: { name: 'Utilisateur Signalé', avatar: null }
+      },
+      reason: 'Contenu inapproprié',
+      description: 'Ce post contient du contenu offensant',
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      location: 'Kaloum, Conakry'
+    },
+    {
+      id: '2',
+      type: 'message',
+      status: 'investigating',
+      severity: 'medium',
+      reporter: { name: 'Fatou Camara', avatar: null },
+      reportedItem: {
+        id: 'message-1',
+        content: 'Message signalé...',
+        author: { name: 'Utilisateur Signalé', avatar: null }
+      },
+      reason: 'Harcèlement',
+      description: 'Messages répétés et harcelants',
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
+      location: 'Dixinn, Conakry'
+    },
+    {
+      id: '3',
+      type: 'livestream',
+      status: 'resolved',
+      severity: 'low',
+      reporter: { name: 'Ibrahima Bah', avatar: null },
+      reportedItem: {
+        id: 'livestream-1',
+        title: 'Live signalé',
+        author: { name: 'Utilisateur Signalé', avatar: null }
+      },
+      reason: 'Contenu inapproprié',
+      description: 'Contenu du livestream inapproprié',
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+      location: 'Ratoma, Conakry'
+    }
+  ]);
 
-      setModeratedContent([
-        {
-          id: 1,
+  const [moderationLogs, setModerationLogs] = useState([
+    {
+      id: '1',
+      action: 'delete',
           type: 'post',
-          content: 'Publication supprimée',
-          author: 'Utilisateur G',
-          action: 'deleted',
-          moderator: user?.firstName + ' ' + user?.lastName,
+      moderator: 'Admin',
+      target: 'Post supprimé',
           reason: 'Contenu inapproprié',
-          createdAt: new Date(Date.now() - 86400000),
-        },
-        {
-          id: 2,
-          type: 'alert',
-          content: 'Alerte masquée',
-          author: 'Utilisateur H',
-          action: 'hidden',
-          moderator: user?.firstName + ' ' + user?.lastName,
-          reason: 'Fausse information',
-          createdAt: new Date(Date.now() - 172800000),
-        },
-      ]);
+      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000)
+    },
+    {
+      id: '2',
+      action: 'warn',
+      type: 'user',
+      moderator: 'Modérateur',
+      target: 'Utilisateur averti',
+      reason: 'Comportement inapproprié',
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000)
+    }
+  ]);
 
-      setUsers([
-        {
-          id: 1,
-          name: 'Utilisateur I',
-          email: 'user1@example.com',
-          role: 'user',
-          status: 'active',
-          reports: 0,
-          posts: 15,
-          joinedAt: new Date(Date.now() - 259200000),
-        },
-        {
-          id: 2,
-          name: 'Utilisateur J',
-          email: 'user2@example.com',
-          role: 'user',
-          status: 'suspended',
-          reports: 3,
-          posts: 5,
-          joinedAt: new Date(Date.now() - 518400000),
-        },
-      ]);
-
-      setStats({
+  const [stats, setStats] = useState({
         totalReports: 15,
-        pendingReports: 8,
-        resolvedReports: 7,
-        activeUsers: 127,
-        moderatedContent: 23,
-        bannedUsers: 3,
-      });
+    pendingReports: 5,
+    resolvedReports: 10,
+    bannedUsers: 2,
+    deletedContent: 8,
+    warningsIssued: 12
+  });
 
+  useEffect(() => {
+    // Charger les données de modération
+    loadModerationData();
+  }, []);
+
+  const loadModerationData = async () => {
+    setLoading(true);
+    try {
+      // Simulation de chargement
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setLoading(false);
-    }, 1000);
-  }, [user]);
+    } catch (error) {
+      setError('Erreur lors du chargement des données');
+      setLoading(false);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
-  const handleReportAction = (reportId, action, reason = '') => {
-    setReports(prev => prev.map(report => {
-      if (report.id === reportId) {
-        return {
-          ...report,
-          status: 'resolved',
-          resolution: action,
-          resolvedBy: user?.firstName + ' ' + user?.lastName,
-          resolvedAt: new Date(),
-          resolutionReason: reason,
-        };
-      }
-      return report;
-    }));
-
-    setSnackbar({
-      open: true,
-      message: `Signalement ${action === 'approved' ? 'approuvé' : 'rejeté'} avec succès`,
-      severity: 'success'
-    });
+  const handleViewDetails = (item) => {
+    setSelectedItem(item);
+    setShowDetailsDialog(true);
   };
 
-  const handleUserAction = (userId, action) => {
-    setUsers(prev => prev.map(user => {
-      if (user.id === userId) {
-        return {
-          ...user,
-          status: action === 'ban' ? 'banned' : action === 'suspend' ? 'suspended' : 'active',
-        };
-      }
-      return user;
-    }));
-
-    setSnackbar({
-      open: true,
-      message: `Utilisateur ${action === 'ban' ? 'banni' : action === 'suspend' ? 'suspendu' : 'réactivé'} avec succès`,
-      severity: 'success'
-    });
+  const handleModerationAction = (item, action) => {
+    setSelectedItem(item);
+    setActionType(action);
+    setShowActionDialog(true);
   };
 
-  const openReportDialog = (report) => {
-    setSelectedReport(report);
-    setReportDialogOpen(true);
+  const executeModerationAction = async () => {
+    if (!actionReason.trim()) {
+      setError('Veuillez fournir une raison pour cette action');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Simulation d'action de modération
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Mettre à jour le statut du signalement
+      setReports(prev => prev.map(report => 
+        report.id === selectedItem.id 
+          ? { ...report, status: actionType === 'delete' ? 'resolved' : 'investigating' }
+          : report
+      ));
+
+      // Ajouter à l'historique
+      const newLog = {
+        id: Date.now().toString(),
+        action: actionType,
+        type: selectedItem.type,
+        moderator: user?.firstName || 'Modérateur',
+        target: selectedItem.reportedItem.title || selectedItem.reportedItem.content,
+        reason: actionReason,
+        timestamp: new Date()
+      };
+
+      setModerationLogs(prev => [newLog, ...prev]);
+
+      setSuccess(`Action de modération exécutée avec succès`);
+      setShowActionDialog(false);
+      setActionReason('');
+      setSelectedItem(null);
+    } catch (error) {
+      setError('Erreur lors de l\'exécution de l\'action');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const closeReportDialog = () => {
-    setReportDialogOpen(false);
-    setSelectedReport(null);
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'post':
+        return <PostIcon />;
+      case 'message':
+        return <MessageIcon />;
+      case 'livestream':
+        return <LiveIcon />;
+      case 'event':
+        return <EventIcon />;
+      case 'user':
+        return <PersonIcon />;
+      default:
+        return <FlagIcon />;
+    }
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'info';
-      default: return 'default';
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'low':
+        return 'success';
+      case 'medium':
+        return 'warning';
+      case 'high':
+        return 'error';
+      case 'critical':
+        return 'error';
+      default:
+        return 'default';
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'warning';
-      case 'resolved': return 'success';
-      case 'rejected': return 'error';
-      default: return 'default';
+      case 'pending':
+        return 'warning';
+      case 'investigating':
+        return 'info';
+      case 'resolved':
+        return 'success';
+      case 'dismissed':
+        return 'default';
+      default:
+        return 'default';
     }
   };
 
-  const getReasonLabel = (reason) => {
-    const reasons = {
-      inappropriate: 'Inapproprié',
-      spam: 'Spam',
-      false_information: 'Fausse information',
-      harassment: 'Harcèlement',
-      other: 'Autre',
-    };
-    return reasons[reason] || reason;
-  };
-
-  const getContentTypeIcon = (type) => {
-    switch (type) {
-      case 'post': return <Post />;
-      case 'alert': return <Warning />;
-      case 'event': return <Event />;
-      case 'livestream': return <LiveTv />;
-      case 'user': return <Person />;
-      default: return <Message />;
+  const getActionColor = (action) => {
+    switch (action) {
+      case 'delete':
+        return 'error';
+      case 'warn':
+        return 'warning';
+      case 'ban':
+        return 'error';
+      case 'approve':
+        return 'success';
+      default:
+        return 'default';
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner message="Chargement du tableau de bord de modération..." />;
-  }
+  const filteredReports = reports.filter(report => {
+    const typeMatch = filterType === 'all' || report.type === filterType;
+    const statusMatch = filterStatus === 'all' || report.status === filterStatus;
+    const searchMatch = !searchQuery || 
+      report.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.reportedItem.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.reportedItem.content?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return typeMatch && statusMatch && searchMatch;
+  });
+
+  const filteredLogs = moderationLogs.filter(log => {
+    const typeMatch = filterType === 'all' || log.type === filterType;
+    const searchMatch = !searchQuery || 
+      log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.reason.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return typeMatch && searchMatch;
+  });
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ p: 3 }}>
         {/* En-tête */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <AdminPanelSettings sx={{ fontSize: 40, color: theme.palette.primary.main, mr: 2 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Tableau de bord de modération
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+            🛡️ Espace de Modération
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Gérez les signalements, le contenu et les utilisateurs de la communauté
+            Gérez les signalements et maintenez la qualité de la communauté
             </Typography>
           </Box>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autoModeration}
+                onChange={(e) => setAutoModeration(e.target.checked)}
+              />
+            }
+            label="Modération automatique"
+          />
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={loadModerationData}
+            disabled={loading}
+          >
+            Actualiser
+          </Button>
         </Box>
+      </Box>
+
+      {/* Messages d'état */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {formatError(error)}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+          {success}
+        </Alert>
+      )}
 
         {/* Statistiques */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={2}>
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Flag color="warning" sx={{ mr: 1 }} />
-                  <Box>
-                    <Typography variant="h6">{stats.pendingReports}</Typography>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="primary" gutterBottom>
+                {stats.totalReports}
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Signalements en attente
+                Signalements totaux
                     </Typography>
-                  </Box>
-                </Box>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <People color="primary" sx={{ mr: 1 }} />
-                  <Box>
-                    <Typography variant="h6">{stats.activeUsers}</Typography>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="warning.main" gutterBottom>
+                {stats.pendingReports}
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Utilisateurs actifs
+                En attente
                     </Typography>
-                  </Box>
-                </Box>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Shield color="success" sx={{ mr: 1 }} />
-                  <Box>
-                    <Typography variant="h6">{stats.moderatedContent}</Typography>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="success.main" gutterBottom>
+                {stats.resolvedReports}
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Contenu modéré
+                Résolus
                     </Typography>
-                  </Box>
-                </Box>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Block color="error" sx={{ mr: 1 }} />
-                  <Box>
-                    <Typography variant="h6">{stats.bannedUsers}</Typography>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="error.main" gutterBottom>
+                {stats.bannedUsers}
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Utilisateurs bannis
                     </Typography>
-                  </Box>
-                </Box>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CheckCircle color="info" sx={{ mr: 1 }} />
-                  <Box>
-                    <Typography variant="h6">{stats.resolvedReports}</Typography>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="error.main" gutterBottom>
+                {stats.deletedContent}
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Signalements résolus
+                Contenu supprimé
                     </Typography>
-                  </Box>
-                </Box>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Analytics color="secondary" sx={{ mr: 1 }} />
-                  <Box>
-                    <Typography variant="h6">{stats.totalReports}</Typography>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="warning.main" gutterBottom>
+                {stats.warningsIssued}
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Total signalements
+                Avertissements
                     </Typography>
-                  </Box>
-                </Box>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
+      {/* Filtres */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <TextField
+          size="small"
+          placeholder="Rechercher..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+          }}
+          sx={{ minWidth: 200 }}
+        />
+        
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Type</InputLabel>
+          <Select
+            value={filterType}
+            label="Type"
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <MenuItem value="all">Tous les types</MenuItem>
+            <MenuItem value="post">Posts</MenuItem>
+            <MenuItem value="message">Messages</MenuItem>
+            <MenuItem value="livestream">Livestreams</MenuItem>
+            <MenuItem value="event">Événements</MenuItem>
+            <MenuItem value="user">Utilisateurs</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Statut</InputLabel>
+          <Select
+            value={filterStatus}
+            label="Statut"
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <MenuItem value="all">Tous les statuts</MenuItem>
+            <MenuItem value="pending">En attente</MenuItem>
+            <MenuItem value="investigating">En cours</MenuItem>
+            <MenuItem value="resolved">Résolu</MenuItem>
+            <MenuItem value="dismissed">Rejeté</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
         {/* Onglets */}
-        <Paper sx={{ width: '100%' }}>
-          <Tabs value={activeTab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={activeTab} onChange={handleTabChange}>
             <Tab 
               label={
-                <Badge badgeContent={stats.pendingReports} color="error">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   Signalements
-                </Badge>
-              } 
-              icon={<Flag />} 
-              iconPosition="start"
-            />
-            <Tab label="Contenu modéré" icon={<Shield />} iconPosition="start" />
-            <Tab label="Utilisateurs" icon={<People />} iconPosition="start" />
-            <Tab label="Statistiques" icon={<Analytics />} iconPosition="start" />
+                <Badge badgeContent={stats.pendingReports} color="error" />
+              </Box>
+            } 
+          />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                Historique
+                <Badge badgeContent={moderationLogs.length} color="primary" />
+              </Box>
+            } 
+          />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                Paramètres
+                <SettingsIcon />
+              </Box>
+            } 
+          />
           </Tabs>
+      </Box>
 
           {/* Contenu des onglets */}
-          <Box sx={{ p: 3 }}>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
             {/* Onglet Signalements */}
             {activeTab === 0 && (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Contenu</TableCell>
-                      <TableCell>Signaleur</TableCell>
-                      <TableCell>Raison</TableCell>
-                      <TableCell>Priorité</TableCell>
-                      <TableCell>Statut</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {reports.map((report) => (
-                      <TableRow key={report.id}>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {getContentTypeIcon(report.type)}
-                            <Typography variant="body2" sx={{ ml: 1 }}>
-                              {report.type.toUpperCase()}
+            <Grid container spacing={3}>
+              {filteredReports.length === 0 ? (
+                <Grid item xs={12}>
+                  <Card sx={{ textAlign: 'center', py: 4 }}>
+                    <SecurityIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                      Aucun signalement trouvé
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {searchQuery || filterType !== 'all' || filterStatus !== 'all'
+                        ? 'Aucun signalement ne correspond à vos filtres.'
+                        : 'Aucun signalement en attente de modération.'
+                      }
+                    </Typography>
+                  </Card>
+                </Grid>
+              ) : (
+                filteredReports.map((report) => (
+                  <Grid item xs={12} md={6} key={report.id}>
+                    <Card>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          {getTypeIcon(report.type)}
+                          <Typography variant="h6" sx={{ ml: 1, flexGrow: 1 }}>
+                            {report.reportedItem.title || 'Signalement'}
                             </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="text"
+                          <Chip
+                            label={report.severity}
+                            color={getSeverityColor(report.severity)}
                             size="small"
-                            onClick={() => openReportDialog(report)}
-                          >
-                            Voir le contenu
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Avatar sx={{ width: 24, height: 24, mr: 1 }}>
-                              {report.reporter.name.charAt(0)}
-                            </Avatar>
-                            <Typography variant="body2">
-                              {report.reporter.name}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={getReasonLabel(report.reason)} 
-                            size="small" 
-                            color="warning"
+                            sx={{ mr: 1 }}
                           />
-                        </TableCell>
-                        <TableCell>
                           <Chip 
-                            label={report.priority} 
-                            size="small" 
-                            color={getPriorityColor(report.priority)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={report.status === 'pending' ? 'En attente' : 'Résolu'} 
-                            size="small" 
+                            label={report.status}
                             color={getStatusColor(report.status)}
+                            size="small"
                           />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {new Date(report.createdAt).toLocaleDateString()}
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {report.reportedItem.content}
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Signalé par {report.reporter.name} • {report.reason}
                           </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {report.status === 'pending' && (
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Tooltip title="Approuver">
-                                <IconButton
+                        </Box>
+
+                        <Typography variant="caption" color="text.secondary">
+                          {report.location} • {report.createdAt.toLocaleDateString()}
+                        </Typography>
+                      </CardContent>
+
+                      <CardActions>
+                        <Button
+                          size="small"
+                          startIcon={<VisibilityIcon />}
+                          onClick={() => handleViewDetails(report)}
+                        >
+                          Détails
+                        </Button>
+                        <Button
+                          size="small"
+                          color="warning"
+                          startIcon={<WarningIcon />}
+                          onClick={() => handleModerationAction(report, 'warn')}
+                        >
+                          Avertir
+                        </Button>
+                        <Button
                                   size="small"
-                                  color="success"
-                                  onClick={() => handleReportAction(report.id, 'approved')}
-                                >
-                                  <Check />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Rejeter">
-                                <IconButton
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => handleModerationAction(report, 'delete')}
+                        >
+                          Supprimer
+                        </Button>
+                        <Button
                                   size="small"
                                   color="error"
-                                  onClick={() => handleReportAction(report.id, 'rejected')}
-                                >
-                                  <Clear />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                          startIcon={<BlockIcon />}
+                          onClick={() => handleModerationAction(report, 'ban')}
+                        >
+                          Bannir
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))
+              )}
+            </Grid>
+          )}
 
-            {/* Onglet Contenu modéré */}
+          {/* Onglet Historique */}
             {activeTab === 1 && (
-              <TableContainer>
+            <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
                     <TableRow>
+                    <TableCell>Action</TableCell>
                       <TableCell>Type</TableCell>
-                      <TableCell>Contenu</TableCell>
-                      <TableCell>Auteur</TableCell>
-                      <TableCell>Action</TableCell>
                       <TableCell>Modérateur</TableCell>
+                    <TableCell>Cible</TableCell>
                       <TableCell>Raison</TableCell>
                       <TableCell>Date</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {moderatedContent.map((item) => (
-                      <TableRow key={item.id}>
+                  {filteredLogs.map((log) => (
+                    <TableRow key={log.id}>
+                        <TableCell>
+                          <Chip 
+                          label={log.action}
+                          color={getActionColor(log.action)}
+                            size="small" 
+                          />
+                        </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {getContentTypeIcon(item.type)}
-                            <Typography variant="body2" sx={{ ml: 1 }}>
-                              {item.type.toUpperCase()}
+                          {getTypeIcon(log.type)}
+                          <Typography variant="body2" sx={{ ml: 1 }}>
+                            {log.type}
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>{item.content}</TableCell>
-                        <TableCell>{item.author}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={item.action === 'deleted' ? 'Supprimé' : 'Masqué'} 
-                            size="small" 
-                            color={item.action === 'deleted' ? 'error' : 'warning'}
-                          />
-                        </TableCell>
-                        <TableCell>{item.moderator}</TableCell>
-                        <TableCell>{item.reason}</TableCell>
-                        <TableCell>
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </TableCell>
+                      <TableCell>{log.moderator}</TableCell>
+                      <TableCell>{log.target}</TableCell>
+                      <TableCell>{log.reason}</TableCell>
+                      <TableCell>{log.timestamp.toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -601,240 +661,154 @@ const ModerationPage = () => {
               </TableContainer>
             )}
 
-            {/* Onglet Utilisateurs */}
-            {activeTab === 2 && (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Utilisateur</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Rôle</TableCell>
-                      <TableCell>Statut</TableCell>
-                      <TableCell>Signalements</TableCell>
-                      <TableCell>Publications</TableCell>
-                      <TableCell>Inscrit le</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
-                              {user.name.charAt(0)}
-                            </Avatar>
-                            <Typography variant="body2">
-                              {user.name}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={user.role} 
-                            size="small" 
-                            color="primary"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={user.status === 'active' ? 'Actif' : user.status === 'suspended' ? 'Suspendu' : 'Banni'} 
-                            size="small" 
-                            color={user.status === 'active' ? 'success' : 'error'}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Badge badgeContent={user.reports} color="error">
-                            <Flag />
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{user.posts}</TableCell>
-                        <TableCell>
-                          {new Date(user.joinedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            {user.status === 'active' ? (
-                              <>
-                                <Tooltip title="Suspendre">
-                                  <IconButton
-                                    size="small"
-                                    color="warning"
-                                    onClick={() => handleUserAction(user.id, 'suspend')}
-                                  >
-                                    <Block />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Bannir">
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleUserAction(user.id, 'ban')}
-                                  >
-                                    <Delete />
-                                  </IconButton>
-                                </Tooltip>
-                              </>
-                            ) : (
-                              <Tooltip title="Réactiver">
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  onClick={() => handleUserAction(user.id, 'activate')}
-                                >
-                                  <CheckCircle />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-
-            {/* Onglet Statistiques */}
-            {activeTab === 3 && (
+          {/* Onglet Paramètres */}
+          {activeTab === 2 && (
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Card>
-                    <CardHeader title="Signalements par type" />
                     <CardContent>
-                      <Typography variant="body2" color="text.secondary">
-                        Graphiques et statistiques détaillées à venir...
+                    <Typography variant="h6" gutterBottom>
+                      Paramètres de modération automatique
                       </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <FormControlLabel
+                        control={<Switch defaultChecked />}
+                        label="Détection automatique de contenu inapproprié"
+                      />
+                      <FormControlLabel
+                        control={<Switch defaultChecked />}
+                        label="Filtrage automatique des mots interdits"
+                      />
+                      <FormControlLabel
+                        control={<Switch />}
+                        label="Modération automatique des images"
+                      />
+                      <FormControlLabel
+                        control={<Switch defaultChecked />}
+                        label="Notifications pour les signalements critiques"
+                      />
+                    </Box>
                     </CardContent>
                   </Card>
                 </Grid>
+              
                 <Grid item xs={12} md={6}>
                   <Card>
-                    <CardHeader title="Actions de modération" />
                     <CardContent>
-                      <Typography variant="body2" color="text.secondary">
-                        Historique des actions de modération à venir...
+                    <Typography variant="h6" gutterBottom>
+                      Seuils de modération
                       </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <TextField
+                        label="Seuil d'avertissement"
+                        type="number"
+                        defaultValue={3}
+                        helperText="Nombre de signalements avant avertissement"
+                      />
+                      <TextField
+                        label="Seuil de suspension"
+                        type="number"
+                        defaultValue={5}
+                        helperText="Nombre de signalements avant suspension"
+                      />
+                      <TextField
+                        label="Seuil de bannissement"
+                        type="number"
+                        defaultValue={10}
+                        helperText="Nombre de signalements avant bannissement"
+                      />
+                    </Box>
                     </CardContent>
                   </Card>
                 </Grid>
               </Grid>
             )}
-          </Box>
-        </Paper>
-      </Box>
+        </>
+      )}
 
-      {/* Dialog de détail du signalement */}
+      {/* Dialog de détails */}
       <Dialog 
-        open={reportDialogOpen} 
-        onClose={closeReportDialog}
+        open={showDetailsDialog}
+        onClose={() => setShowDetailsDialog(false)}
         maxWidth="md"
         fullWidth
       >
-        {selectedReport && (
-          <>
             <DialogTitle>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="h6">
-                  Détail du signalement #{selectedReport.id}
-                </Typography>
-                <IconButton onClick={closeReportDialog}>
-                  <Close />
-                </IconButton>
-              </Box>
+          Détails du signalement
             </DialogTitle>
             <DialogContent>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Contenu signalé
+          {selectedItem && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                {selectedItem.reportedItem.title || 'Signalement'}
                   </Typography>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="body2">
-                      <strong>Auteur:</strong> {selectedReport.content.author?.name || selectedReport.content.name}
+              <Typography variant="body2" color="text.secondary" paragraph>
+                {selectedItem.reportedItem.content}
+                    </Typography>
+              <Typography variant="body2" paragraph>
+                <strong>Raison :</strong> {selectedItem.reason}
+                    </Typography>
+              <Typography variant="body2" paragraph>
+                <strong>Description :</strong> {selectedItem.description}
+                    </Typography>
+              <Typography variant="body2" paragraph>
+                <strong>Signalé par :</strong> {selectedItem.reporter.name}
+                    </Typography>
+              <Typography variant="body2" paragraph>
+                <strong>Localisation :</strong> {selectedItem.location}
                     </Typography>
                     <Typography variant="body2">
-                      <strong>Type:</strong> {selectedReport.type}
+                <strong>Date :</strong> {selectedItem.createdAt.toLocaleString()}
                     </Typography>
-                    <Typography variant="body2">
-                      <strong>Contenu:</strong> {selectedReport.content.content || selectedReport.content.description || selectedReport.content.title}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Date:</strong> {new Date(selectedReport.content.createdAt).toLocaleString()}
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Informations du signalement
-                  </Typography>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="body2">
-                      <strong>Signaleur:</strong> {selectedReport.reporter.name}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Raison:</strong> {getReasonLabel(selectedReport.reason)}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Description:</strong> {selectedReport.description}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Priorité:</strong> {selectedReport.priority}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Date:</strong> {new Date(selectedReport.createdAt).toLocaleString()}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
+            </Box>
+          )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={closeReportDialog}>Fermer</Button>
-              {selectedReport.status === 'pending' && (
-                <>
-                  <Button 
-                    color="success" 
-                    variant="contained"
-                    onClick={() => {
-                      handleReportAction(selectedReport.id, 'approved');
-                      closeReportDialog();
-                    }}
-                  >
-                    Approuver
-                  </Button>
-                  <Button 
-                    color="error" 
-                    variant="contained"
-                    onClick={() => {
-                      handleReportAction(selectedReport.id, 'rejected');
-                      closeReportDialog();
-                    }}
-                  >
-                    Rejeter
-                  </Button>
-                </>
-              )}
-            </DialogActions>
-          </>
-        )}
+          <Button onClick={() => setShowDetailsDialog(false)}>
+            Fermer
+          </Button>
+        </DialogActions>
       </Dialog>
 
-      {/* Snackbar pour les notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      {/* Dialog d'action de modération */}
+      <Dialog
+        open={showActionDialog}
+        onClose={() => setShowActionDialog(false)}
+        maxWidth="sm"
+        fullWidth
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+        <DialogTitle>
+          Action de modération - {actionType}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Raison de l'action"
+            multiline
+            rows={4}
+            fullWidth
+            variant="outlined"
+            value={actionReason}
+            onChange={(e) => setActionReason(e.target.value)}
+            placeholder="Expliquez la raison de cette action de modération..."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowActionDialog(false)}>
+            Annuler
+                  </Button>
+                  <Button 
+            onClick={executeModerationAction}
+                    variant="contained"
+            color={actionType === 'delete' || actionType === 'ban' ? 'error' : 'warning'}
+            disabled={!actionReason.trim() || loading}
+          >
+            {loading ? <CircularProgress size={20} /> : 'Exécuter'}
+                  </Button>
+            </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

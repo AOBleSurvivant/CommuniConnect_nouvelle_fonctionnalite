@@ -87,6 +87,7 @@ const initialState = {
   searchResults: [],
   loading: false,
   error: null,
+  success: null,
   selectedConversationId: null,
   unreadCount: 0,
   isConnected: false,
@@ -212,10 +213,20 @@ const messagesSlice = createSlice({
     }
   },
 
-  // Mettre à jour le statut de connexion
-  updateConnectionStatus: (state, action) => {
-    state.isConnected = action.payload;
-  }
+      // Mettre à jour le statut de connexion
+    updateConnectionStatus: (state, action) => {
+      state.isConnected = action.payload;
+    },
+
+    // Effacer les erreurs
+    clearError: (state) => {
+      state.error = null;
+    },
+
+    // Effacer les messages de succès
+    clearSuccess: (state) => {
+      state.success = null;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -333,7 +344,9 @@ export const {
   updateStats,
   decrementUnreadCount,
   setTypingIndicator,
-  updateConnectionStatus
+  updateConnectionStatus,
+  clearError,
+  clearSuccess
 } = messagesSlice.actions;
 
 // Sélecteurs

@@ -2,22 +2,28 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import LoadingSpinner from './components/common/LoadingSpinner';
-import NotificationToast from './components/common/NotificationToast';
+// import NotificationToast from './components/common/NotificationToast';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import { AccessibilityProvider } from './components/common/AccessibilityProvider';
 
-// Import des composants
+// Import des composants lazy
 import Layout from './components/Layout/Layout';
-import HomePage from './pages/HomePage';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
-import ProfilePage from './pages/Profile/ProfilePage';
-import FeedPage from './pages/Feed/FeedPage';
-import AlertsPage from './pages/Alerts/AlertsPage';
-import EventsPage from './pages/Events/EventsPage';
-import LivestreamsPage from './pages/Livestreams/LivestreamsPage';
-import HelpPage from './pages/Help/HelpPage';
-import MapPage from './pages/Map/MapPage';
-import MessagesPage from './pages/Messages/MessagesPage';
-import ModerationPage from './pages/Moderation/ModerationPage';
+import AuthCallback from './pages/Auth/AuthCallback';
+import {
+  LazyHomePage,
+  LazyFeedPage,
+  LazyAlertsPage,
+  LazyEventsPage,
+  LazyLivestreamsPage,
+  LazyHelpPage,
+  LazyMapPage,
+  LazyMessagesPage,
+  LazyFriendsPage,
+  LazyProfilePage,
+  LazyModerationPage
+} from './components/common/LazyLoader';
 
 // Import des actions Redux
 import { checkAuthStatus } from './store/slices/authSlice';
@@ -32,7 +38,10 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <LoadingSpinner fullScreen message="Vérification de l'authentification..." />;
   }
 
-  if (!isAuthenticated) {
+  // En mode développement, permettre l'accès même sans authentification
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (!isAuthenticated && !isDevelopment) {
     return <Navigate to="/login" replace />;
   }
 
@@ -57,10 +66,13 @@ function App() {
   }
 
   return (
+    <ErrorBoundary>
+      <AccessibilityProvider>
     <Routes>
       {/* Routes publiques */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       
       {/* Routes protégées avec layout */}
       <Route path="/" element={
@@ -68,18 +80,19 @@ function App() {
           <Layout />
         </ProtectedRoute>
       }>
-        <Route index element={<HomePage />} />
-        <Route path="feed" element={<FeedPage />} />
-        <Route path="alerts" element={<AlertsPage />} />
-        <Route path="events" element={<EventsPage />} />
-        <Route path="livestreams" element={<LivestreamsPage />} />
-        <Route path="help" element={<HelpPage />} />
-        <Route path="map" element={<MapPage />} />
-        <Route path="messages" element={<MessagesPage />} />
-        <Route path="profile" element={<ProfilePage />} />
+            <Route index element={<LazyHomePage />} />
+            <Route path="feed" element={<LazyFeedPage />} />
+            <Route path="alerts" element={<LazyAlertsPage />} />
+            <Route path="events" element={<LazyEventsPage />} />
+            <Route path="livestreams" element={<LazyLivestreamsPage />} />
+            <Route path="help" element={<LazyHelpPage />} />
+            <Route path="map" element={<LazyMapPage />} />
+            <Route path="messages" element={<LazyMessagesPage />} />
+            <Route path="friends" element={<LazyFriendsPage />} />
+            <Route path="profile" element={<LazyProfilePage />} />
         <Route path="moderation" element={
           <ProtectedRoute allowedRoles={['moderator', 'admin']}>
-            <ModerationPage />
+                <LazyModerationPage />
           </ProtectedRoute>
         } />
       </Route>
@@ -87,6 +100,8 @@ function App() {
       {/* Route par défaut */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+      </AccessibilityProvider>
+    </ErrorBoundary>
   );
 }
 

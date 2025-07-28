@@ -1,72 +1,45 @@
 const axios = require('axios');
 
-const API_URL = 'http://localhost:5000/api';
-
-// Données de test pour l'inscription
-const testUserData = {
-  firstName: 'Test',
-  lastName: 'User',
-  email: 'test@example.com',
-  phone: '22412345678',
-  password: 'password123',
-  region: 'Labé',
-  prefecture: 'Labé',
-  commune: 'Labé-Centre',
-  quartier: 'Tata',
-  latitude: 11.3182,
-  longitude: -12.2833,
-  address: 'Tata, Labé-Centre, Labé, Labé, Guinée'
-};
-
 async function testRegistration() {
-  console.log('=== Test d\'inscription ===\n');
-  console.log('Données de test:', JSON.stringify(testUserData, null, 2));
-  console.log('');
+  console.log('🧪 Test de l\'API d\'inscription...\n');
 
   try {
-    console.log('📡 Envoi de la requête d\'inscription...');
-    
-    const response = await axios.post(`${API_URL}/auth/register`, testUserData, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // 1. Test de santé du serveur
+    console.log('1️⃣ Test de santé du serveur...');
+    const healthResponse = await axios.get('http://localhost:5000/api/auth');
+    console.log('✅ Serveur en ligne:', healthResponse.data.message);
 
-    console.log('✅ Inscription réussie !');
-    console.log('Réponse:', JSON.stringify(response.data, null, 2));
+    // 2. Test d'inscription avec données valides
+    console.log('\n2️⃣ Test d\'inscription...');
+    const testUserData = {
+      email: 'test@example.com',
+      password: 'password123',
+      firstName: 'Test',
+      lastName: 'User',
+      phone: '22412345678',
+      region: 'Conakry',
+      prefecture: 'Conakry',
+      commune: 'Kaloum',
+      quartier: 'Almamya I',
+      address: 'Almamya I, Kaloum, Conakry, Guinée',
+      latitude: 9.5144,
+      longitude: -13.6783,
+      dateOfBirth: '1990-01-01',
+      gender: 'Homme'
+    };
+
+    console.log('Données envoyées:', testUserData);
+
+    const registerResponse = await axios.post('http://localhost:5000/api/auth/register', testUserData);
+    console.log('✅ Inscription réussie:', registerResponse.data);
 
   } catch (error) {
-    console.log('❌ Erreur d\'inscription:');
-    
+    console.error('❌ Erreur lors du test:', error.message);
     if (error.response) {
-      console.log('Status:', error.response.status);
-      console.log('Données d\'erreur:', JSON.stringify(error.response.data, null, 2));
-    } else {
-      console.log('Erreur réseau:', error.message);
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
     }
   }
 }
 
-// Vérifier que le serveur est en cours d'exécution
-async function checkServerStatus() {
-  try {
-    const response = await axios.get(`${API_URL}/auth`);
-    console.log('✅ Serveur accessible');
-    console.log('Status:', response.data);
-    console.log('');
-    return true;
-  } catch (error) {
-    console.log('❌ Serveur non accessible');
-    console.log('Assurez-vous que le serveur est démarré sur le port 5000');
-    return false;
-  }
-}
-
-async function main() {
-  const serverOk = await checkServerStatus();
-  if (serverOk) {
-    await testRegistration();
-  }
-}
-
-main().catch(console.error); 
+testRegistration(); 

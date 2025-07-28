@@ -38,7 +38,7 @@ const LoginPage = () => {
   const { loading, error } = useSelector((state) => state.auth);
   
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '',
     password: '',
   });
   
@@ -66,9 +66,41 @@ const LoginPage = () => {
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    // TODO: Implémenter la connexion sociale
-    console.log(`Connexion avec ${provider}`);
+  const handleSocialLogin = async (provider) => {
+    try {
+      // setLoading(true); // This state is not defined in the original file, so it's removed.
+      // setError(null); // This state is not defined in the original file, so it's removed.
+      
+      // Configuration des providers OAuth
+      const oauthConfig = {
+        google: {
+          clientId: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'your-google-client-id',
+          scope: 'email profile',
+          redirectUri: `${window.location.origin}/auth/callback`
+        },
+        facebook: {
+          clientId: process.env.REACT_APP_FACEBOOK_CLIENT_ID || 'your-facebook-client-id',
+          scope: 'email public_profile',
+          redirectUri: `${window.location.origin}/auth/callback`
+        }
+      };
+
+      const config = oauthConfig[provider];
+      
+      // Construire l'URL d'autorisation
+      const authUrl = provider === 'google' 
+        ? `https://accounts.google.com/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=${encodeURIComponent(config.scope)}&response_type=code`
+        : `https://www.facebook.com/dialog/oauth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=${encodeURIComponent(config.scope)}&response_type=code`;
+
+      // Rediriger vers l'autorisation
+      window.location.href = authUrl;
+      
+    } catch (error) {
+      console.error(`Erreur de connexion ${provider}:`, error);
+      // setError(`Erreur lors de la connexion avec ${provider}. Veuillez réessayer.`); // This state is not defined in the original file, so it's removed.
+    } finally {
+      // setLoading(false); // This state is not defined in the original file, so it's removed.
+    }
   };
 
   const togglePasswordVisibility = () => {

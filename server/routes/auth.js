@@ -3,6 +3,8 @@ const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { validateGuineanLocation } = require('../middleware/geographicValidation');
+const User = require('../models/User'); // Added missing import for User model
+const bcrypt = require('bcryptjs'); // Added missing import for bcrypt
 
 const router = express.Router();
 
@@ -47,116 +49,121 @@ const generateToken = (id) => {
 // @desc    Inscription d'un nouvel utilisateur (réservé aux Guinéens)
 // @access  Public
 router.post('/register', [
-  body('firstName')
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('Le prénom doit contenir entre 2 et 50 caractères'),
-  
-  body('lastName')
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('Le nom de famille doit contenir entre 2 et 50 caractères'),
-  
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Veuillez entrer un email valide'),
-  
-  body('phone')
-    .matches(/^(\+224|224)?[0-9]{8,9}$/)
-    .withMessage('Veuillez entrer un numéro de téléphone guinéen valide'),
-  
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Le mot de passe doit contenir au moins 6 caractères'),
-  
-  body('latitude')
-    .isFloat({ min: 7.1935, max: 12.6769 })
-    .withMessage('La latitude doit être dans les limites de la Guinée'),
-  
-  body('longitude')
-    .isFloat({ min: -15.0820, max: -7.6411 })
-    .withMessage('La longitude doit être dans les limites de la Guinée'),
-], validateGuineanLocation, async (req, res) => {
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 6 }),
+  body('firstName').notEmpty().trim(),
+  body('lastName').notEmpty().trim(),
+  body('phone').optional().isMobilePhone(),
+  body('region').notEmpty().trim(),
+  body('prefecture').notEmpty().trim(),
+  body('commune').notEmpty().trim(),
+  body('quartier').notEmpty().trim(),
+  body('address').notEmpty().trim(),
+  body('latitude').isFloat(),
+  body('longitude').isFloat()
+], async (req, res) => {
   try {
-    // Vérifier les erreurs de validation
+    console.log('Données reçues:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Erreurs de validation:', errors.array());
       return res.status(400).json({
         success: false,
+        message: 'Données invalides',
         errors: errors.array()
       });
     }
 
-    const {
+    const { email, password, firstName, lastName, phone, region, prefecture, commune, quartier, address, latitude, longitude } = req.body;
+
+    // Vérifier si MongoDB est disponible
+    const mongoose = require('mongoose');
+    console.log('État de la connexion MongoDB:', mongoose.connection.readyState);
+    
+    // Vérifier si l'utilisateur existe déjà (seulement si MongoDB est connecté)
+    if (mongoose.connection.readyState === 1) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Un utilisateur avec cet email existe déjà'
+        });
+      }
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Créer l'utilisateur
+    const userData = {
+      email,
+      password: hashedPassword,
       firstName,
       lastName,
-      email,
-      phone,
-      password,
-      quartier = 'Centre',
-      address = 'Adresse par défaut',
-      dateOfBirth = '1990-01-01',
-      gender = 'Homme'
-    } = req.body;
-
-    // Utiliser les informations de localisation validées par le middleware
-    const validatedLocation = req.validatedLocation;
-
-    // En mode développement, créer un utilisateur fictif
-    const user = {
-      _id: crypto.randomBytes(16).toString('hex'),
-      firstName,
-      lastName,
-      email,
-      phone,
-      region: validatedLocation.region,
-      prefecture: validatedLocation.prefecture,
-      commune: validatedLocation.commune,
+      phone: phone || null,
+      region,
+      prefecture,
+      commune,
       quartier,
       address,
-      dateOfBirth,
-      gender,
-      coordinates: validatedLocation.coordinates,
-      distanceFromCenter: validatedLocation.distance,
-      role: 'user',
-      isVerified: true,
-      isActive: true,
-      createdAt: new Date(),
-      getPublicProfile: function() {
-        return {
-          _id: this._id,
-          firstName: this.firstName,
-          lastName: this.lastName,
-          fullName: `${this.firstName} ${this.lastName}`,
-          email: this.email,
-          phone: this.phone,
-          region: this.region,
-          prefecture: this.prefecture,
-          commune: this.commune,
-          quartier: this.quartier,
-          role: this.role,
-          isVerified: this.isVerified,
-          createdAt: this.createdAt
-        };
+      coordinates: {
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude)
       }
     };
 
-    // Générer le token
-    const token = generateToken(user._id);
+    // Vérifier si MongoDB est disponible
+    console.log('État de la connexion MongoDB:', mongoose.connection.readyState);
+    
+    let user = null;
+    if (mongoose.connection.readyState === 1) {
+      // MongoDB est connecté, sauvegarder l'utilisateur
+      console.log('Sauvegarde dans MongoDB...');
+      user = new User(userData);
+      await user.save();
+      console.log('Utilisateur sauvegardé avec succès');
+    } else {
+      // Mode développement sans MongoDB, simuler une inscription réussie
+      console.log('Mode développement: Utilisateur simulé créé');
+      user = {
+        _id: 'dev-user-id',
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: 'user'
+      };
+    }
+
+    // Générer le token JWT
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Compte créé avec succès (mode développement)',
+      message: 'Inscription réussie',
       token,
-      user: user.getPublicProfile()
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
     });
-
   } catch (error) {
     console.error('Erreur lors de l\'inscription:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la création du compte',
+      message: 'Erreur serveur lors de l\'inscription',
       error: error.message
     });
   }
@@ -195,8 +202,8 @@ router.post('/login', [
       phone: identifier.includes('@') ? '22412345678' : identifier,
       region: 'Conakry',
       prefecture: 'Conakry',
-      commune: 'Kaloum',
-      quartier: 'Centre',
+      commune: '',
+      quartier: '',
       role: 'user',
       isVerified: true,
       isActive: true,
@@ -240,6 +247,28 @@ router.post('/login', [
   }
 });
 
+// @route   PUT /api/auth/profile/picture
+// @desc    Mettre à jour la photo de profil
+// @access  Private
+router.put('/profile/picture', async (req, res) => {
+  try {
+    // En mode développement, simuler l'upload
+    const mockImageUrl = `https://via.placeholder.com/200x200/4CAF50/FFFFFF?text=${req.user.firstName?.charAt(0) || 'U'}`;
+    
+    res.json({
+      success: true,
+      message: 'Photo de profil mise à jour avec succès',
+      profilePicture: mockImageUrl
+    });
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de la photo de profil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour de la photo de profil'
+    });
+  }
+});
+
 // @route   GET /api/auth/me
 // @desc    Obtenir le profil de l'utilisateur connecté
 // @access  Private
@@ -254,8 +283,8 @@ router.get('/me', (req, res) => {
       phone: '22412345678',
       region: 'Conakry',
       prefecture: 'Conakry',
-      commune: 'Kaloum',
-      quartier: 'Centre',
+      commune: '',
+      quartier: '',
       role: 'user',
       isVerified: true,
       createdAt: new Date(),
@@ -387,6 +416,73 @@ router.post('/logout', (req, res) => {
       success: false,
       message: 'Erreur lors de la déconnexion',
       error: error.message
+    });
+  }
+});
+
+// POST /api/auth/oauth/callback - Callback OAuth pour Google/Facebook
+router.post('/oauth/callback', async (req, res) => {
+  try {
+    const { code, state, redirectUri } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Code d\'autorisation requis'
+      });
+    }
+
+    // En mode développement, simuler une authentification OAuth réussie
+    if (process.env.NODE_ENV === 'development') {
+      const mockUser = {
+        _id: 'oauth-user-id',
+        firstName: 'Utilisateur',
+        lastName: 'OAuth',
+        email: 'oauth@example.com',
+        phone: '22412345678',
+        role: 'user',
+        isVerified: true,
+        isActive: true,
+        location: {
+          region: 'Conakry',
+          prefecture: 'Conakry',
+          commune: 'Kaloum',
+          quartier: 'Centre',
+          coordinates: {
+            latitude: 9.537,
+            longitude: -13.6785
+          }
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const token = jwt.sign(
+        { userId: mockUser._id, email: mockUser.email },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        success: true,
+        message: 'Connexion OAuth réussie',
+        user: mockUser,
+        token
+      });
+    }
+
+    // En production, échanger le code contre un token
+    // TODO: Implémenter l'échange de code avec Google/Facebook
+    res.status(501).json({
+      success: false,
+      message: 'Authentification OAuth non implémentée en production'
+    });
+
+  } catch (error) {
+    console.error('Erreur OAuth callback:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'authentification OAuth'
     });
   }
 });

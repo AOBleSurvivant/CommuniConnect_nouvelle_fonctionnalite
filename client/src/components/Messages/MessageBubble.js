@@ -145,7 +145,57 @@ const MessageBubble = ({ message, isOwn, onReply, onDelete }) => {
             {/* Pièces jointes */}
             {message.attachments && message.attachments.length > 0 && (
               <Box sx={{ mt: 1 }}>
-                {message.attachments.map((attachment, index) => (
+                {message.attachments.map((attachment, index) => {
+                  // Vérifier si c'est une vidéo
+                  const isVideo = attachment.type?.startsWith('video/') || 
+                                 attachment.filename?.match(/\.(mp4|avi|mov|wmv|flv|webm|mkv)$/i);
+                  
+                  if (isVideo) {
+                    return (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        <video
+                          controls
+                          width="100%"
+                          maxWidth="300px"
+                          style={{ borderRadius: 8 }}
+                        >
+                          <source src={attachment.url} type={attachment.type || 'video/mp4'} />
+                          Votre navigateur ne supporte pas la lecture de vidéos.
+                        </video>
+                        <Typography variant="caption" color="text.secondary">
+                          {attachment.filename}
+                        </Typography>
+                      </Box>
+                    );
+                  }
+                  
+                  // Vérifier si c'est une image
+                  const isImage = attachment.type?.startsWith('image/') || 
+                                 attachment.filename?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                  
+                  if (isImage) {
+                    return (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        <img
+                          src={attachment.url}
+                          alt={attachment.filename}
+                          style={{
+                            maxWidth: '200px',
+                            maxHeight: '200px',
+                            borderRadius: 8,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => window.open(attachment.url, '_blank')}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {attachment.filename}
+                        </Typography>
+                      </Box>
+                    );
+                  }
+                  
+                  // Autres types de fichiers
+                  return (
                   <Chip
                     key={index}
                     label={attachment.filename}
@@ -154,7 +204,8 @@ const MessageBubble = ({ message, isOwn, onReply, onDelete }) => {
                     sx={{ mr: 0.5, mb: 0.5 }}
                     onClick={() => window.open(attachment.url, '_blank')}
                   />
-                ))}
+                  );
+                })}
               </Box>
             )}
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware: auth } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 
 // GET /api/users - Route de base pour vérifier l'état du service
 router.get('/', (req, res) => {

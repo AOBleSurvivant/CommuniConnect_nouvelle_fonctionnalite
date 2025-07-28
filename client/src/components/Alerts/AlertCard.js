@@ -253,33 +253,33 @@ const AlertCard = ({ alert, onStatusChange, onEdit, onDelete, onReport, onShare 
           </Box>
         }
         subheader={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Schedule sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="caption" color="text.secondary">
+              <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {formatDistanceToNow(new Date(alert.createdAt), { 
                   addSuffix: true, 
                   locale: fr 
                 })}
-              </Typography>
-            </Box>
+              </span>
+            </div>
             {alert.location && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <LocationOn sx={{ fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="caption" color="text.secondary">
+                <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                   {alert.location}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             )}
             {alert.contactPhone && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Phone sx={{ fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="caption" color="text.secondary">
+                <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                   {alert.contactPhone}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             )}
-          </Box>
+          </div>
         }
       />
 

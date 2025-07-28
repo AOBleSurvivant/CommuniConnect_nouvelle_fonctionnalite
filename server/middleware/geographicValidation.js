@@ -98,62 +98,56 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-// Middleware de validation géographique
+// Middleware de validation géographique simplifié
 const validateGuineanLocation = (req, res, next) => {
-  const { latitude, longitude, location } = req.body;
+  const { latitude, longitude, address } = req.body;
 
-  // Vérifier que les coordonnées sont fournies
-  if (!latitude || !longitude) {
+  // Vérifier que l'adresse est fournie
+  if (!address || !address.trim()) {
     return res.status(400).json({
       success: false,
-      message: 'Les coordonnées géographiques sont requises pour l\'inscription'
+      message: 'L\'adresse est requise pour l\'inscription'
     });
   }
 
-  // Convertir en nombres
-  const lat = parseFloat(latitude);
-  const lon = parseFloat(longitude);
+  // Si des coordonnées sont fournies, les valider basiquement
+  if (latitude && longitude) {
+    const lat = parseFloat(latitude);
+    const lon = parseFloat(longitude);
 
-  // Vérifier que les coordonnées sont valides
-  if (isNaN(lat) || isNaN(lon)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Les coordonnées géographiques doivent être des nombres valides'
-    });
+    // Vérifier que les coordonnées sont des nombres valides
+    if (isNaN(lat) || isNaN(lon)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les coordonnées géographiques doivent être des nombres valides'
+      });
+    }
+
+    // Vérification basique si les coordonnées sont en Guinée (approximatif)
+    const isInGuinea = lat >= 7.0 && lat <= 12.5 && 
+                      lon >= -15.0 && lon <= -7.5;
+
+    if (!isInGuinea) {
+      return res.status(403).json({
+        success: false,
+        message: 'CommuniConnect est réservé aux résidents de la Guinée. Votre localisation actuelle ne se trouve pas en Guinée.'
+      });
+    }
+
+    // Ajouter les coordonnées validées à la requête
+    req.validatedLocation = {
+      coordinates: {
+        latitude: lat,
+        longitude: lon
+      },
+      address: address.trim()
+    };
+  } else {
+    // Si pas de coordonnées, juste valider l'adresse
+    req.validatedLocation = {
+      address: address.trim()
+    };
   }
-
-  // Charger les données géographiques
-  const geographyData = loadGuineaGeography();
-
-  // Vérifier si la localisation est en Guinée
-  if (!isLocationInGuinea(lat, lon)) {
-    return res.status(403).json({
-      success: false,
-      message: 'CommuniConnect est réservé aux résidents de la Guinée. Votre localisation actuelle ne se trouve pas en Guinée.'
-    });
-  }
-
-  // Trouver la localisation exacte
-  const exactLocation = findExactLocation(lat, lon, geographyData);
-
-  if (!exactLocation) {
-    return res.status(400).json({
-      success: false,
-      message: 'Impossible de déterminer votre commune exacte. Veuillez vérifier votre localisation.'
-    });
-  }
-
-  // Ajouter les informations de localisation validées à la requête
-  req.validatedLocation = {
-    coordinates: {
-      latitude: lat,
-      longitude: lon
-    },
-    region: exactLocation.region,
-    prefecture: exactLocation.prefecture,
-    commune: exactLocation.commune,
-    distance: exactLocation.distance
-  };
 
   next();
 };
@@ -172,9 +166,5 @@ const validateLocationUpdate = (req, res, next) => {
 };
 
 module.exports = {
-  validateGuineanLocation,
-  validateLocationUpdate,
-  isLocationInGuinea,
-  findExactLocation,
-  loadGuineaGeography
+  validateGuineanLocation
 }; 

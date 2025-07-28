@@ -31,7 +31,21 @@ const pushNotificationService = new PushNotificationService();
 const PORT = process.env.PORT || 5000;
 
 // Middleware de sécurité et de performance
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "http://localhost:3000", "ws://localhost:5000", "http://localhost:5000"]
+    }
+  },
+  xFrameOptions: { action: 'deny' },
+  xContentTypeOptions: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+}));
 app.use(compression());
 app.use(morgan('combined'));
 
@@ -70,19 +84,18 @@ const connectToMongoDB = async () => {
   }
 };
 
-// Routes API
+// Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
 app.use('/api/posts', require('./routes/posts'));
-app.use('/api/alerts', require('./routes/alerts'));
-app.use('/api/events', require('./routes/events'));
-app.use('/api/livestreams', require('./routes/livestreams'));
-app.use('/api/help', require('./routes/help'));
-app.use('/api/locations', require('./routes/locations'));
-app.use('/api/moderation', require('./routes/moderation'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/livestreams', require('./routes/livestreams'));
+app.use('/api/events', require('./routes/events'));
+app.use('/api/alerts', require('./routes/alerts'));
+app.use('/api/friends', require('./routes/friends'));
+app.use('/api/moderation', require('./routes/moderation'));
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/moderation', require('./routes/advancedModeration'));
+app.use('/api/locations', require('./routes/locations'));
+app.use('/api/users', require('./routes/users'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/stats', require('./routes/stats'));
 

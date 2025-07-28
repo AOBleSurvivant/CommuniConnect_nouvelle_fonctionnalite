@@ -276,22 +276,22 @@ const EventCard = ({ event, onJoin, onLeave, onEdit, onDelete, onReport, onShare
           </Box>
         }
         subheader={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Schedule sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="caption" color="text.secondary">
+              <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                 {format(new Date(event.startDate), 'dd/MM/yyyy à HH:mm', { locale: fr })}
-              </Typography>
-            </Box>
+              </span>
+            </div>
             {event.location && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <LocationOn sx={{ fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="caption" color="text.secondary">
+                <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                   {event.location?.venue}, {event.location?.quartier}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             )}
-          </Box>
+          </div>
         }
       />
 

@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createSelector } from '@reduxjs/toolkit';
 import notificationService from '../../services/notificationService';
 
 const notificationsSlice = createSlice({
@@ -213,40 +213,50 @@ export const selectPermission = (state) => state.notifications.permission;
 export const selectSettings = (state) => state.notifications.settings;
 
 // Sélecteurs dérivés
-export const selectUnreadNotifications = (state) => 
-  state.notifications.notifications.filter(n => !n.read);
+export const selectUnreadNotifications = createSelector(
+  [selectNotifications],
+  (notifications) => notifications.filter(n => !n.read)
+);
 
-export const selectNotificationsByType = (state, type) => 
-  state.notifications.notifications.filter(n => n.type === type);
+export const selectNotificationsByType = createSelector(
+  [selectNotifications, (state, type) => type],
+  (notifications, type) => notifications.filter(n => n.type === type)
+);
 
-export const selectHighPriorityNotifications = (state) => 
-  state.notifications.notifications.filter(n => n.priority === 'high');
+export const selectHighPriorityNotifications = createSelector(
+  [selectNotifications],
+  (notifications) => notifications.filter(n => n.priority === 'high')
+);
 
-export const selectRecentNotifications = (state, limit = 10) => 
-  state.notifications.notifications.slice(0, limit);
+export const selectRecentNotifications = createSelector(
+  [selectNotifications, (state, limit = 10) => limit],
+  (notifications, limit) => notifications.slice(0, limit)
+);
 
-export const selectNotificationStats = (state) => {
-  const notifications = state.notifications.notifications;
-  const stats = {
-    total: notifications.length,
-    unread: notifications.filter(n => !n.read).length,
-    byType: {},
-    byPriority: {
-      low: 0,
-      normal: 0,
-      high: 0
-    }
-  };
-  
-  notifications.forEach(notification => {
-    // Par type
-    stats.byType[notification.type] = (stats.byType[notification.type] || 0) + 1;
+export const selectNotificationStats = createSelector(
+  [selectNotifications],
+  (notifications) => {
+    const stats = {
+      total: notifications.length,
+      unread: notifications.filter(n => !n.read).length,
+      byType: {},
+      byPriority: {
+        low: 0,
+        normal: 0,
+        high: 0
+      }
+    };
     
-    // Par priorité
-    stats.byPriority[notification.priority] = (stats.byPriority[notification.priority] || 0) + 1;
-  });
-  
-  return stats;
-};
+    notifications.forEach(notification => {
+      // Par type
+      stats.byType[notification.type] = (stats.byType[notification.type] || 0) + 1;
+      
+      // Par priorité
+      stats.byPriority[notification.priority] = (stats.byPriority[notification.priority] || 0) + 1;
+    });
+    
+    return stats;
+  }
+);
 
 export default notificationsSlice.reducer; 

@@ -7,9 +7,9 @@ export const fetchAlerts = createAsyncThunk(
   async (filters = {}, { rejectWithValue }) => {
     try {
       const response = await alertsService.getAlerts(filters);
-      return response.data;
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération des alertes');
+      return rejectWithValue(error.message || 'Erreur lors de la récupération des alertes');
     }
   }
 );
@@ -19,9 +19,9 @@ export const fetchUrgentAlerts = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await alertsService.getUrgentAlerts();
-      return response.data;
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération des alertes urgentes');
+      return rejectWithValue(error.message || 'Erreur lors de la récupération des alertes urgentes');
     }
   }
 );
@@ -31,9 +31,9 @@ export const fetchNearbyAlerts = createAsyncThunk(
   async ({ latitude, longitude, radius = 5 }, { rejectWithValue }) => {
     try {
       const response = await alertsService.getNearbyAlerts(latitude, longitude, radius);
-      return response.data;
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération des alertes à proximité');
+      return rejectWithValue(error.message || 'Erreur lors de la récupération des alertes à proximité');
     }
   }
 );
@@ -43,9 +43,9 @@ export const fetchAlert = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await alertsService.getAlert(id);
-      return response.data;
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors de la récupération de l\'alerte');
     }
   }
 );
@@ -55,9 +55,9 @@ export const createAlert = createAsyncThunk(
   async (alertData, { rejectWithValue }) => {
     try {
       const response = await alertsService.createAlert(alertData);
-      return response.data;
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la création de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors de la création de l\'alerte');
     }
   }
 );
@@ -67,9 +67,9 @@ export const updateAlert = createAsyncThunk(
   async ({ id, updateData }, { rejectWithValue }) => {
     try {
       const response = await alertsService.updateAlert(id, updateData);
-      return { id, data: response.data };
+      return { id, data: response };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la mise à jour de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors de la mise à jour de l\'alerte');
     }
   }
 );
@@ -79,9 +79,9 @@ export const confirmAlert = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await alertsService.confirmAlert(id);
-      return { id, data: response.data };
+      return { id, data: response };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la confirmation de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors de la confirmation de l\'alerte');
     }
   }
 );
@@ -91,9 +91,9 @@ export const denyAlert = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await alertsService.denyAlert(id);
-      return { id, data: response.data };
+      return { id, data: response };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la dénégation de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors de la dénégation de l\'alerte');
     }
   }
 );
@@ -103,9 +103,9 @@ export const addAlertUpdate = createAsyncThunk(
   async ({ id, updateData }, { rejectWithValue }) => {
     try {
       const response = await alertsService.addUpdate(id, updateData);
-      return { id, update: response.data };
+      return { id, update: response };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de l\'ajout de la mise à jour');
+      return rejectWithValue(error.message || 'Erreur lors de l\'ajout de la mise à jour');
     }
   }
 );
@@ -115,9 +115,9 @@ export const reportAlert = createAsyncThunk(
   async ({ id, reportData }, { rejectWithValue }) => {
     try {
       const response = await alertsService.reportAlert(id, reportData);
-      return { id, report: response.data };
+      return { id, report: response };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors du signalement de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors du signalement de l\'alerte');
     }
   }
 );
@@ -129,7 +129,7 @@ export const deleteAlert = createAsyncThunk(
       await alertsService.deleteAlert(id);
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la suppression de l\'alerte');
+      return rejectWithValue(error.message || 'Erreur lors de la suppression de l\'alerte');
     }
   }
 );
@@ -206,8 +206,12 @@ const alertsSlice = createSlice({
       })
       .addCase(fetchAlerts.fulfilled, (state, action) => {
         state.loading = false;
-        state.alerts = action.payload.alerts;
-        state.pagination = action.payload.pagination;
+        if (action.payload && action.payload.alerts) {
+          state.alerts = action.payload.alerts;
+          state.pagination = action.payload.pagination;
+        } else {
+          state.alerts = action.payload || [];
+        }
         state.success = true;
       })
       .addCase(fetchAlerts.rejected, (state, action) => {
@@ -223,7 +227,7 @@ const alertsSlice = createSlice({
       })
       .addCase(fetchUrgentAlerts.fulfilled, (state, action) => {
         state.loading = false;
-        state.urgentAlerts = action.payload;
+        state.urgentAlerts = action.payload || [];
         state.success = true;
       })
       .addCase(fetchUrgentAlerts.rejected, (state, action) => {
@@ -239,7 +243,7 @@ const alertsSlice = createSlice({
       })
       .addCase(fetchNearbyAlerts.fulfilled, (state, action) => {
         state.loading = false;
-        state.nearbyAlerts = action.payload;
+        state.nearbyAlerts = action.payload || [];
         state.success = true;
       })
       .addCase(fetchNearbyAlerts.rejected, (state, action) => {
@@ -255,7 +259,7 @@ const alertsSlice = createSlice({
       })
       .addCase(fetchAlert.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentAlert = action.payload;
+        state.currentAlert = action.payload || null;
         state.success = true;
       })
       .addCase(fetchAlert.rejected, (state, action) => {
@@ -271,7 +275,9 @@ const alertsSlice = createSlice({
       })
       .addCase(createAlert.fulfilled, (state, action) => {
         state.loading = false;
-        state.alerts.unshift(action.payload);
+        if (action.payload) {
+          state.alerts.unshift(action.payload);
+        }
         state.success = true;
       })
       .addCase(createAlert.rejected, (state, action) => {

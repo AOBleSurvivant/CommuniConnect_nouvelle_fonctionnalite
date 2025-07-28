@@ -28,6 +28,7 @@ import {
   ListItemAvatar,
   Divider,
   Paper,
+  Dialog,
   useTheme,
   useMediaQuery
 } from '@mui/material';
@@ -437,10 +438,25 @@ const LivestreamsPage = () => {
 
       {/* Lecteur de live */}
       {selectedLivestream && (
+        <Dialog
+          open={!!selectedLivestream}
+          onClose={handleClosePlayer}
+          maxWidth="xl"
+          fullWidth
+          fullScreen={isMobile}
+          PaperProps={{
+            sx: {
+              borderRadius: isMobile ? 0 : 2,
+              minHeight: isMobile ? '100vh' : '80vh',
+              backgroundColor: 'black'
+            }
+          }}
+        >
         <LivestreamPlayer
           livestream={selectedLivestream}
           onClose={handleClosePlayer}
         />
+        </Dialog>
       )}
 
       {/* Bouton flottant pour mobile */}

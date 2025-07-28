@@ -1,273 +1,357 @@
-import api from './api';
+import { initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+
+// Configuration Firebase (à remplacer par vos vraies clés)
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "demo-api-key",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "communiConnect-demo.firebaseapp.com",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "communiConnect-demo",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "communiConnect-demo.appspot.com",
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "123456789",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:123456789:web:abcdef123456"
+};
 
 class PushNotificationService {
   constructor() {
+    this.messaging = null;
     this.isSupported = this.checkSupport();
-    this.permission = null;
-    this.registration = null;
-    this.init();
+    this.notificationPermission = 'default';
+    this.isInitialized = false;
   }
 
-  // Vérifier si les notifications push sont supportées
   checkSupport() {
-    return 'serviceWorker' in navigator && 
-           'PushManager' in window && 
-           'Notification' in window;
+    return 'serviceWorker' in navigator && 'PushManager' in window;
   }
 
-  // Initialiser le service
-  async init() {
-    if (!this.isSupported) {
-      console.log('⚠️ Notifications push non supportées par ce navigateur');
-      return;
+  async initialize() {
+    if (!this.isSupported || this.isInitialized) {
+      return false;
     }
 
     try {
-      // Enregistrer le service worker
-      this.registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('✅ Service Worker enregistré');
+      // Initialiser Firebase
+      const app = initializeApp(firebaseConfig);
+      this.messaging = getMessaging(app);
 
-      // Vérifier la permission
-      this.permission = await this.requestPermission();
+      // Demander la permission
+      this.notificationPermission = await this.requestPermission();
       
-      if (this.permission === 'granted') {
-        await this.subscribeToPush();
+      if (this.notificationPermission === 'granted') {
+        // Obtenir le token FCM
+        const token = await this.getFCMToken();
+        if (token) {
+          await this.sendTokenToServer(token);
+        }
+
+        // Écouter les messages en arrière-plan
+        this.setupBackgroundMessageHandler();
+        
+        // Écouter les messages au premier plan
+        this.setupForegroundMessageHandler();
       }
+
+      this.isInitialized = true;
+      return true;
     } catch (error) {
-      console.error('❌ Erreur lors de l\'initialisation des notifications push:', error);
+      console.error('Erreur lors de l\'initialisation des notifications push:', error);
+      return false;
     }
   }
 
-  // Demander la permission pour les notifications
   async requestPermission() {
-    if (!this.isSupported) return 'denied';
-
     try {
       const permission = await Notification.requestPermission();
-      console.log('📱 Permission notifications:', permission);
       return permission;
     } catch (error) {
-      console.error('❌ Erreur lors de la demande de permission:', error);
+      console.error('Erreur lors de la demande de permission:', error);
       return 'denied';
     }
   }
 
-  // S'abonner aux notifications push
-  async subscribeToPush() {
-    if (!this.isSupported || this.permission !== 'granted') {
-      return false;
-    }
-
+  async getFCMToken() {
     try {
-      const subscription = await this.registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY)
+      const token = await getToken(this.messaging, {
+        vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY || 'demo-vapid-key'
       });
-
-      // Envoyer le token au serveur
-      await this.registerToken(subscription);
-      return true;
+      return token;
     } catch (error) {
-      console.error('❌ Erreur lors de l\'abonnement aux notifications:', error);
-      return false;
-    }
-  }
-
-  // Se désabonner des notifications push
-  async unsubscribeFromPush() {
-    if (!this.isSupported) return false;
-
-    try {
-      const subscription = await this.registration.pushManager.getSubscription();
-      if (subscription) {
-        await subscription.unsubscribe();
-        await this.unregisterToken();
-        console.log('✅ Désabonnement des notifications réussi');
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('❌ Erreur lors du désabonnement:', error);
-      return false;
-    }
-  }
-
-  // Enregistrer le token FCM au serveur
-  async registerToken(subscription) {
-    try {
-      const response = await api.post('/notifications/register-token', {
-        fcmToken: subscription.endpoint,
-        deviceInfo: {
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          language: navigator.language
-        }
-      });
-
-      if (response.data.success) {
-        console.log('✅ Token FCM enregistré au serveur');
-        return true;
-      } else {
-        console.error('❌ Échec de l\'enregistrement du token');
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'enregistrement du token:', error);
-      return false;
-    }
-  }
-
-  // Supprimer le token FCM du serveur
-  async unregisterToken() {
-    try {
-      const response = await api.delete('/notifications/unregister-token');
-      
-      if (response.data.success) {
-        console.log('✅ Token FCM supprimé du serveur');
-        return true;
-      } else {
-        console.error('❌ Échec de la suppression du token');
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de la suppression du token:', error);
-      return false;
-    }
-  }
-
-  // Récupérer les paramètres de notification
-  async getNotificationSettings() {
-    try {
-      const response = await api.get('/notifications/settings');
-      
-      if (response.data.success) {
-        return response.data.settings;
-      } else {
-        console.error('❌ Échec de la récupération des paramètres');
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des paramètres:', error);
+      console.error('Erreur lors de l\'obtention du token FCM:', error);
       return null;
     }
   }
 
-  // Mettre à jour les paramètres de notification
-  async updateNotificationSettings(settings) {
+  async sendTokenToServer(token) {
     try {
-      const response = await api.put('/notifications/settings', { settings });
-      
-      if (response.data.success) {
-        console.log('✅ Paramètres de notification mis à jour');
-        return true;
-      } else {
-        console.error('❌ Échec de la mise à jour des paramètres');
-        return false;
+      const response = await fetch('/api/notifications/register-device', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ token, platform: 'web' })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'enregistrement du token');
       }
+
+      console.log('Token FCM enregistré avec succès');
     } catch (error) {
-      console.error('❌ Erreur lors de la mise à jour des paramètres:', error);
-      return false;
+      console.error('Erreur lors de l\'envoi du token au serveur:', error);
     }
   }
 
-  // Envoyer une notification de test
-  async sendTestNotification(type, title, body) {
-    try {
-      const response = await api.post('/notifications/test', {
-        type,
-        title,
-        body
-      });
-      
-      if (response.data.success) {
-        console.log('✅ Notification de test envoyée');
-        return true;
-      } else {
-        console.error('❌ Échec de l\'envoi de la notification de test');
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'envoi de la notification de test:', error);
-      return false;
-    }
-  }
-
-  // Afficher une notification locale
-  showLocalNotification(title, options = {}) {
-    if (!this.isSupported || this.permission !== 'granted') {
-      return false;
-    }
-
-    try {
-      const notification = new Notification(title, {
-        icon: '/icon-192x192.png',
-        badge: '/badge-72x72.png',
-        requireInteraction: false,
-        ...options
-      });
-
-      // Gérer les clics sur la notification
-      notification.onclick = (event) => {
-        event.preventDefault();
-        window.focus();
-        
-        if (options.onClick) {
-          options.onClick(event);
+  setupBackgroundMessageHandler() {
+    // Gestionnaire pour les messages en arrière-plan
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'PUSH_NOTIFICATION') {
+          this.handleNotification(event.data.payload);
         }
+      });
+    }
+  }
+
+  setupForegroundMessageHandler() {
+    // Gestionnaire pour les messages au premier plan
+    onMessage(this.messaging, (payload) => {
+      console.log('Message reçu au premier plan:', payload);
+      this.handleNotification(payload);
+    });
+  }
+
+  handleNotification(payload) {
+    const { notification, data } = payload;
+    
+    // Créer une notification native
+    if (Notification.permission === 'granted') {
+      const notificationOptions = {
+        body: notification.body,
+        icon: '/logo192.png',
+        badge: '/logo192.png',
+        tag: data?.type || 'default',
+        data: data,
+        actions: this.getNotificationActions(data?.type),
+        requireInteraction: data?.type === 'alert' || data?.type === 'critical'
       };
 
-      return notification;
+      const nativeNotification = new Notification(notification.title, notificationOptions);
+
+      // Gérer les clics sur la notification
+      nativeNotification.onclick = (event) => {
+        this.handleNotificationClick(event, data);
+        nativeNotification.close();
+      };
+
+      // Auto-fermeture pour les notifications non critiques
+      if (data?.type !== 'alert' && data?.type !== 'critical') {
+        setTimeout(() => {
+          nativeNotification.close();
+        }, 10000); // 10 secondes
+      }
+    }
+
+    // Émettre un événement personnalisé pour l'interface
+    window.dispatchEvent(new CustomEvent('pushNotification', {
+      detail: { notification, data }
+    }));
+  }
+
+  getNotificationActions(type) {
+    switch (type) {
+      case 'message':
+        return [
+          { action: 'reply', title: 'Répondre', icon: '/icons/reply.png' },
+          { action: 'view', title: 'Voir', icon: '/icons/view.png' }
+        ];
+      case 'alert':
+        return [
+          { action: 'view', title: 'Voir détails', icon: '/icons/view.png' },
+          { action: 'share', title: 'Partager', icon: '/icons/share.png' }
+        ];
+      case 'livestream':
+        return [
+          { action: 'join', title: 'Rejoindre', icon: '/icons/join.png' },
+          { action: 'view', title: 'Voir', icon: '/icons/view.png' }
+        ];
+      case 'event':
+        return [
+          { action: 'rsvp', title: 'Participer', icon: '/icons/rsvp.png' },
+          { action: 'view', title: 'Voir détails', icon: '/icons/view.png' }
+        ];
+      default:
+        return [
+          { action: 'view', title: 'Voir', icon: '/icons/view.png' }
+        ];
+    }
+  }
+
+  handleNotificationClick(event, data) {
+    const { type, id, url } = data;
+
+    switch (type) {
+      case 'message':
+        // Rediriger vers la conversation
+        window.location.href = `/messages?conversation=${id}`;
+        break;
+      case 'alert':
+        // Rediriger vers les détails de l'alerte
+        window.location.href = `/alerts?alert=${id}`;
+        break;
+      case 'livestream':
+        // Rediriger vers le livestream
+        window.location.href = `/livestreams?stream=${id}`;
+        break;
+      case 'event':
+        // Rediriger vers l'événement
+        window.location.href = `/events?event=${id}`;
+        break;
+      case 'friend_request':
+        // Rediriger vers les demandes d'amis
+        window.location.href = `/friends?tab=requests`;
+        break;
+      default:
+        // Redirection par défaut
+        if (url) {
+          window.location.href = url;
+        }
+    }
+  }
+
+  // Méthodes pour envoyer des notifications depuis l'interface
+  async sendNotification(userId, notification) {
+    try {
+      const response = await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId,
+          title: notification.title,
+          body: notification.body,
+          data: notification.data,
+          type: notification.type
+        })
+      });
+
+      return response.ok;
     } catch (error) {
-      console.error('❌ Erreur lors de l\'affichage de la notification locale:', error);
+      console.error('Erreur lors de l\'envoi de notification:', error);
       return false;
     }
   }
 
-  // Convertir la clé VAPID en Uint8Array
-  urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
+  // Notifications pour les livestreams
+  async notifyLivestreamStart(livestreamId, title, authorName) {
+    return this.sendNotification('all', {
+      title: '🎥 Live en cours',
+      body: `${title} par ${authorName}`,
+      data: {
+        type: 'livestream',
+        id: livestreamId,
+        url: `/livestreams?stream=${livestreamId}`
+      },
+      type: 'livestream'
+    });
   }
 
-  // Vérifier si les notifications sont activées
-  isEnabled() {
-    return this.isSupported && this.permission === 'granted';
-  }
-
-  // Obtenir le statut des notifications
-  getStatus() {
-    return {
-      supported: this.isSupported,
-      permission: this.permission,
-      enabled: this.isEnabled()
+  // Notifications pour les alertes
+  async notifyAlert(alertId, title, urgency) {
+    const urgencyEmoji = {
+      low: 'ℹ️',
+      medium: '⚠️',
+      high: '🚨',
+      critical: '🚨'
     };
+
+    return this.sendNotification('all', {
+      title: `${urgencyEmoji[urgency]} Nouvelle alerte`,
+      body: title,
+      data: {
+        type: 'alert',
+        id: alertId,
+        url: `/alerts?alert=${alertId}`
+      },
+      type: 'alert'
+    });
   }
 
-  // Réinitialiser le service
-  async reset() {
+  // Notifications pour les messages
+  async notifyNewMessage(conversationId, senderName, message) {
+    return this.sendNotification('conversation', {
+      title: `💬 ${senderName}`,
+      body: message,
+      data: {
+        type: 'message',
+        id: conversationId,
+        url: `/messages?conversation=${conversationId}`
+      },
+      type: 'message'
+    });
+  }
+
+  // Notifications pour les événements
+  async notifyEvent(eventId, title, date) {
+    return this.sendNotification('all', {
+      title: '📅 Événement à venir',
+      body: `${title} - ${new Date(date).toLocaleDateString()}`,
+      data: {
+        type: 'event',
+        id: eventId,
+        url: `/events?event=${eventId}`
+      },
+      type: 'event'
+    });
+  }
+
+  // Notifications pour les demandes d'amis
+  async notifyFriendRequest(requesterName) {
+    return this.sendNotification('user', {
+      title: '👥 Nouvelle demande d'ami',
+      body: `${requesterName} souhaite vous ajouter comme ami`,
+      data: {
+        type: 'friend_request',
+        url: '/friends?tab=requests'
+      },
+      type: 'friend_request'
+    });
+  }
+
+  // Méthodes utilitaires
+  isSupported() {
+    return this.isSupported;
+  }
+
+  isInitialized() {
+    return this.isInitialized;
+  }
+
+  getPermissionStatus() {
+    return this.notificationPermission;
+  }
+
+  async updateSettings(settings) {
     try {
-      await this.unsubscribeFromPush();
-      await this.init();
-      console.log('✅ Service de notifications réinitialisé');
-      return true;
+      const response = await fetch('/api/notifications/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(settings)
+      });
+
+      return response.ok;
     } catch (error) {
-      console.error('❌ Erreur lors de la réinitialisation:', error);
+      console.error('Erreur lors de la mise à jour des paramètres:', error);
       return false;
     }
   }
 }
 
-// Créer une instance singleton
+// Instance singleton
 const pushNotificationService = new PushNotificationService();
 
 export default pushNotificationService; 

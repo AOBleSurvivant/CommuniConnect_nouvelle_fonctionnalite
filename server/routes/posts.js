@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { authMiddleware, authorize, checkOwnership } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 const router = express.Router();
 
 // Données fictives pour le développement
@@ -78,7 +78,7 @@ let posts = [
 ];
 
 // GET /api/posts - Récupérer tous les posts (avec pagination et filtres)
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const { 
       page = 1, 
@@ -147,7 +147,7 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // GET /api/posts/:id - Récupérer un post spécifique
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const post = posts.find(p => p._id === req.params.id);
     
@@ -164,13 +164,13 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 // POST /api/posts - Créer un nouveau post
 router.post('/', [
-  authMiddleware,
+  auth,
   body('content').trim().isLength({ min: 1, max: 2000 }).withMessage('Le contenu doit contenir entre 1 et 2000 caractères'),
   body('type').isIn(['community', 'alert', 'event', 'help', 'announcement']).withMessage('Type de post invalide'),
-  body('location.region').optional().notEmpty().withMessage('Région requise'),
-  body('location.prefecture').optional().notEmpty().withMessage('Préfecture requise'),
-  body('location.commune').optional().notEmpty().withMessage('Commune requise'),
-  body('location.quartier').optional().notEmpty().withMessage('Quartier requis'),
+  body('location.region').optional(),
+  body('location.prefecture').optional(),
+  body('location.commune').optional(),
+  body('location.quartier').optional(),
   body('isPublic').optional().isBoolean().withMessage('isPublic doit être un booléen')
 ], async (req, res) => {
   try {
@@ -190,13 +190,13 @@ router.post('/', [
     const newPost = {
       _id: Date.now().toString(),
       author: {
-        _id: req.user.id,
+        _id: req.user._id || req.user.id,
         firstName: req.user.firstName,
         lastName: req.user.lastName,
         avatar: null
       },
       content,
-      media,
+      media: media || [],
       location: {
         region: location?.region || req.user.region || 'Conakry',
         prefecture: location?.prefecture || req.user.prefecture || 'Conakry',
@@ -235,7 +235,7 @@ router.post('/', [
 
 // PUT /api/posts/:id - Mettre à jour un post
 router.put('/:id', [
-  authMiddleware,
+  auth,
   body('content').optional().trim().isLength({ min: 1, max: 2000 }).withMessage('Le contenu doit contenir entre 1 et 2000 caractères'),
   body('type').optional().isIn(['community', 'alert', 'event', 'help', 'announcement']).withMessage('Type de post invalide'),
   body('isPublic').optional().isBoolean().withMessage('isPublic doit être un booléen')
@@ -282,7 +282,7 @@ router.put('/:id', [
 });
 
 // DELETE /api/posts/:id - Supprimer un post
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const postIndex = posts.findIndex(p => p._id === req.params.id);
     
@@ -311,7 +311,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
 // POST /api/posts/:id/reactions - Ajouter/retirer une réaction
 router.post('/:id/reactions', [
-  authMiddleware,
+  auth,
   body('type').isIn(['like', 'love', 'helpful', 'sad', 'angry']).withMessage('Type de réaction invalide')
 ], async (req, res) => {
   try {
@@ -361,7 +361,7 @@ router.post('/:id/reactions', [
 
 // POST /api/posts/:id/comments - Ajouter un commentaire
 router.post('/:id/comments', [
-  authMiddleware,
+  auth,
   body('content').trim().isLength({ min: 1, max: 500 }).withMessage('Le commentaire doit contenir entre 1 et 500 caractères')
 ], async (req, res) => {
   try {
@@ -402,7 +402,7 @@ router.post('/:id/comments', [
 });
 
 // DELETE /api/posts/:postId/comments/:commentId - Supprimer un commentaire
-router.delete('/:postId/comments/:commentId', authMiddleware, async (req, res) => {
+router.delete('/:postId/comments/:commentId', auth, async (req, res) => {
   try {
     const post = posts.find(p => p._id === req.params.postId);
     
@@ -437,7 +437,7 @@ router.delete('/:postId/comments/:commentId', authMiddleware, async (req, res) =
 });
 
 // POST /api/posts/:id/share - Partager un post
-router.post('/:id/share', authMiddleware, async (req, res) => {
+router.post('/:id/share', auth, async (req, res) => {
   try {
     const post = posts.find(p => p._id === req.params.id);
     
@@ -460,7 +460,7 @@ router.post('/:id/share', authMiddleware, async (req, res) => {
 });
 
 // GET /api/posts/user/:userId - Posts d'un utilisateur spécifique
-router.get('/user/:userId', authMiddleware, async (req, res) => {
+router.get('/user/:userId', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const userId = req.params.userId;

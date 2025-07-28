@@ -26,6 +26,8 @@ import {
   LocationOn as LocationIcon
 } from '@mui/icons-material';
 import { createConversation } from '../../store/slices/messagesSlice';
+import { formatError } from '../../utils/errorHandler';
+import LocationSelector from '../common/LocationSelector';
 
 const CreateConversationForm = ({ open, onClose }) => {
   const dispatch = useDispatch();
@@ -146,9 +148,10 @@ const CreateConversationForm = ({ open, onClose }) => {
       </DialogTitle>
 
       <DialogContent>
+        {/* Message d'erreur */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            {formatError(error)}
           </Alert>
         )}
 
@@ -258,27 +261,15 @@ const CreateConversationForm = ({ open, onClose }) => {
                 Informations géographiques
               </Typography>
               
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Autocomplete
-                  fullWidth
-                  options={quartiers}
-                  value={formData.quartier}
-                  onChange={(_, newValue) => handleChange('quartier', newValue)}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Quartier" />
-                  )}
-                />
-                
-                <Autocomplete
-                  fullWidth
-                  options={villes}
-                  value={formData.ville}
-                  onChange={(_, newValue) => handleChange('ville', newValue)}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Ville" />
-                  )}
-                />
-              </Box>
+              <LocationSelector 
+                formData={formData}
+                handleInputChange={(e) => {
+                  const { name, value } = e.target;
+                  handleChange(name, value);
+                }}
+                showGPS={true}
+                required={true}
+              />
             </>
           )}
 

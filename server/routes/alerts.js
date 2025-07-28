@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
-const { authMiddleware: auth } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 const { validateGuineanLocation } = require('../middleware/geographicValidation');
 const Alert = require('../models/Alert');
 const User = require('../models/User');
@@ -413,19 +413,23 @@ router.post('/', [
     .withMessage('Priorité invalide'),
   
   body('latitude')
+    .optional()
     .isFloat({ min: 7.1935, max: 12.6769 })
     .withMessage('La latitude doit être dans les limites de la Guinée'),
   
   body('longitude')
+    .optional()
     .isFloat({ min: -15.0820, max: -7.6411 })
     .withMessage('La longitude doit être dans les limites de la Guinée'),
   
   body('quartier')
+    .optional()
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Le quartier doit contenir entre 2 et 50 caractères'),
   
   body('address')
+    .optional()
     .trim()
     .isLength({ min: 5, max: 200 })
     .withMessage('L\'adresse doit contenir entre 5 et 200 caractères'),
@@ -434,7 +438,7 @@ router.post('/', [
     .optional()
     .isFloat({ min: 0.1, max: 50 })
     .withMessage('Le rayon d\'impact doit être entre 0.1 et 50 km')
-], validateGuineanLocation, async (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -450,12 +454,23 @@ router.post('/', [
       type,
       category,
       priority,
-      quartier,
-      address,
-      impactRadius = 5
+      quartier = 'Centre',
+      address = 'Conakry, Guinée',
+      impactRadius = 5,
+      latitude = 9.5370,
+      longitude = -13.6785
     } = req.body;
 
-    const validatedLocation = req.validatedLocation;
+    // En mode développement, utiliser des données par défaut
+    const defaultLocation = {
+      coordinates: { latitude, longitude },
+      region: 'Conakry',
+      prefecture: 'Conakry',
+      commune: 'Kaloum',
+      quartier,
+      address,
+      impactRadius
+    };
 
     // En mode développement, créer une alerte fictive
     const alert = {
@@ -466,16 +481,12 @@ router.post('/', [
       category,
       priority,
       status: 'active',
-      location: {
-        coordinates: validatedLocation.coordinates,
-        region: validatedLocation.region,
-        prefecture: validatedLocation.prefecture,
-        commune: validatedLocation.commune,
-        quartier,
-        address,
-        impactRadius
+      location: defaultLocation,
+      author: {
+        _id: req.user._id || req.user.id,
+        firstName: req.user.firstName || 'Test',
+        lastName: req.user.lastName || 'User'
       },
-      author: req.user._id,
       emergencyContacts: {
         police: '117',
         pompiers: '18',

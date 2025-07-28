@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
-const { authMiddleware: auth } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 const { validateGuineanLocation } = require('../middleware/geographicValidation');
 const LiveStream = require('../models/LiveStream');
 
@@ -411,137 +411,83 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// @route   POST /api/livestreams
-// @desc    Créer un nouveau live communautaire
-// @access  Private
-router.post('/', [
-  auth,
-  body('type')
-    .isIn(['alert', 'event', 'meeting', 'sensitization', 'community'])
-    .withMessage('Type de live invalide'),
-  
-  body('title')
-    .trim()
-    .isLength({ min: 5, max: 80 })
-    .withMessage('Le titre doit contenir entre 5 et 80 caractères'),
-  
-  body('description')
-    .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('La description ne peut pas dépasser 200 caractères'),
-  
-  body('urgency')
-    .optional()
-    .isIn(['low', 'medium', 'high', 'critical'])
-    .withMessage('Niveau d\'urgence invalide'),
-  
-  body('visibility')
-    .optional()
-    .isIn(['quartier', 'commune', 'prefecture'])
-    .withMessage('Visibilité invalide')
-], validateGuineanLocation, async (req, res) => {
+// POST /api/livestreams - Créer un nouveau livestream (version simplifiée)
+router.post('/', auth, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
     const {
-      type,
       title,
       description,
-      urgency = 'medium',
-      visibility = 'quartier'
+      type = 'community',
+      urgency = 'low',
+      isPublic = true,
+      location
     } = req.body;
 
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation de création
-      const mockStream = {
-        _id: '507f1f77bcf86cd799439050',
-        type,
-        title,
-        description,
-        status: 'scheduled',
-        urgency,
-        visibility,
-        location: {
-          region: req.user.region || 'Conakry',
-          prefecture: req.user.prefecture || 'Conakry',
-          commune: req.user.commune || 'Kaloum',
-          quartier: req.user.quartier || 'Centre'
-        },
-        author: {
-          _id: req.user._id,
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-          profilePicture: req.user.profilePicture,
-          isVerified: req.user.isVerified
-        },
-        stats: {
-          currentViewers: 0,
-          totalViewers: 0,
-          totalMessages: 0
-        },
-        viewers: [],
-        messages: [],
-        reactions: [],
-        settings: {
-          allowComments: true,
-          allowReactions: true
-        },
-        moderation: {
-          isReported: false,
-          reports: []
-        },
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+    // En mode développement, utiliser des données par défaut
+    const defaultLocation = {
+      region: 'Conakry',
+      prefecture: 'Conakry',
+      commune: 'Kaloum',
+      quartier: 'Centre',
+      coordinates: {
+        latitude: 9.537,
+        longitude: -13.6785
+      }
+    };
 
-      res.status(201).json({
-        success: true,
-        message: 'Live créé avec succès',
-        data: mockStream
-      });
-      return;
-    }
-
-    // Créer le live avec MongoDB
-    const stream = new LiveStream({
-      author: req.user._id,
-      type,
+    const newLivestream = {
+      _id: Date.now().toString(),
       title,
       description,
+      type,
       urgency,
-      visibility,
-      location: {
-        region: req.user.region || 'Conakry',
-        prefecture: req.user.prefecture || 'Conakry',
-        commune: req.user.commune || 'Kaloum',
-        quartier: req.user.quartier || 'Centre'
-      }
-    });
+      status: 'pending',
+      isPublic,
+      location: location || defaultLocation,
+      author: {
+        _id: req.user._id || req.user.id,
+        firstName: req.user.firstName || 'Utilisateur',
+        lastName: req.user.lastName || 'OAuth',
+        profilePicture: null,
+        isVerified: true
+      },
+      stats: {
+        currentViewers: 0,
+        totalViewers: 0,
+        totalMessages: 0
+      },
+      viewers: [],
+      messages: [],
+      reactions: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-    await stream.save();
+    // En mode développement, simuler l'ajout à une base de données
+    if (process.env.NODE_ENV === 'development') {
+      // Simuler un succès
+      return res.status(201).json({
+        success: true,
+        message: 'Livestream créé avec succès',
+        livestream: newLivestream
+      });
+    }
 
-    // Populate les données de l'auteur
-    await stream.populate('author', 'firstName lastName profilePicture isVerified');
+    // En production, sauvegarder dans MongoDB
+    const livestream = new LiveStream(newLivestream);
+    await livestream.save();
 
     res.status(201).json({
       success: true,
-      message: 'Live créé avec succès',
-      data: stream
+      message: 'Livestream créé avec succès',
+      livestream
     });
 
   } catch (error) {
-    console.error('Erreur lors de la création du live:', error);
+    console.error('Erreur lors de la création du livestream:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la création du live'
+      message: 'Erreur serveur lors de la création du livestream'
     });
   }
 });

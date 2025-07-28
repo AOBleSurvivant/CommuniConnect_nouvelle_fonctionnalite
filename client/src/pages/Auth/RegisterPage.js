@@ -42,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { register } from '../../store/slices/authSlice';
 import LocationSelector from '../../components/Auth/LocationSelector';
+import { formatError } from '../../utils/errorHandler';
 
 const steps = ['Informations personnelles', 'Localisation', 'Sécurité'];
 
@@ -101,7 +102,19 @@ const RegisterPage = () => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      // TODO: Afficher une erreur
+      alert('Les mots de passe ne correspondent pas');
+      return;
+    }
+    
+    // Vérifier que tous les champs requis sont remplis
+    if (!formData.dateOfBirth || !formData.gender) {
+      alert('Veuillez remplir votre date de naissance et votre genre');
+      return;
+    }
+    
+    // Vérifier que toutes les données de localisation sont remplies
+    if (!formData.region || !formData.prefecture || !formData.commune || !formData.quartier) {
+      alert('Veuillez sélectionner votre localisation complète (région, préfecture, commune, quartier)');
       return;
     }
     
@@ -112,6 +125,7 @@ const RegisterPage = () => {
       }
     } catch (error) {
       console.error('Erreur d\'inscription:', error);
+      alert(error.message || 'Erreur lors de l\'inscription');
     }
   };
 
@@ -126,7 +140,7 @@ const RegisterPage = () => {
   const isStepValid = (step) => {
     switch (step) {
       case 0:
-        return formData.firstName && formData.lastName && formData.email && formData.phone;
+        return formData.firstName && formData.lastName && formData.email && formData.phone && formData.dateOfBirth && formData.gender;
       case 1:
         return formData.region && formData.prefecture && formData.commune && formData.quartier && formData.latitude && formData.longitude;
       case 2:
@@ -229,9 +243,9 @@ const RegisterPage = () => {
                   onChange={handleInputChange}
                   label="Genre"
                 >
-                  <MenuItem value="male">Homme</MenuItem>
-                  <MenuItem value="female">Femme</MenuItem>
-                  <MenuItem value="other">Autre</MenuItem>
+                  <MenuItem value="Homme">Homme</MenuItem>
+                  <MenuItem value="Femme">Femme</MenuItem>
+                  <MenuItem value="Autre">Autre</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -385,7 +399,7 @@ const RegisterPage = () => {
             {error && (
               <Fade in timeout={300}>
                 <Alert severity="error" sx={{ mb: 3 }}>
-                  {error}
+                  {formatError(error)}
                 </Alert>
               </Fade>
             )}

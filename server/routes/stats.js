@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware: auth } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 
 // GET /api/stats - Statistiques globales
 router.get('/', auth, async (req, res) => {

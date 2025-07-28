@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { updateProfilePicture } from '../../store/slices/authSlice';
 import {
   Box,
   Typography,
@@ -70,6 +71,8 @@ import {
   Unlock,
 } from '@mui/icons-material';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import authService from '../../services/authService';
+import LocationSelector from '../../components/common/LocationSelector';
 
 const ProfilePage = () => {
   const theme = useTheme();
@@ -279,6 +282,56 @@ const ProfilePage = () => {
     setLoading(false);
   };
 
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validation du fichier
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      setSnackbar({
+        open: true,
+        message: 'L\'image est trop volumineuse. Taille maximale : 5MB',
+        severity: 'error'
+      });
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setSnackbar({
+        open: true,
+        message: 'Veuillez sélectionner une image valide',
+        severity: 'error'
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Créer un FormData pour l'upload
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+
+      // Upload via l'API
+      await dispatch(updateProfilePicture(formData)).unwrap();
+      
+      setSnackbar({
+        open: true,
+        message: 'Photo de profil mise à jour avec succès !',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Erreur lors de la mise à jour de la photo de profil',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+      // Reset l'input
+      event.target.value = '';
+    }
+  };
+
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
@@ -324,6 +377,7 @@ const ProfilePage = () => {
                     <IconButton
                       size="small"
                       sx={{ bgcolor: theme.palette.primary.main, color: 'white' }}
+                      onClick={() => document.getElementById('profile-picture-upload').click()}
                     >
                       <PhotoCamera fontSize="small" />
                     </IconButton>
@@ -336,6 +390,13 @@ const ProfilePage = () => {
                     {user?.firstName?.charAt(0) || 'U'}
                   </Avatar>
                 </Badge>
+                <input
+                  id="profile-picture-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureUpload}
+                  style={{ display: 'none' }}
+                />
               </Grid>
               <Grid item xs>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -478,70 +539,32 @@ const ProfilePage = () => {
                   <Typography variant="h6" gutterBottom>
                     Localisation
                   </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                      <FormControl fullWidth disabled={!editMode}>
-                        <InputLabel>Région</InputLabel>
-                        <Select
-                          name="region"
-                          value={formData.region}
-                          onChange={handleInputChange}
-                          label="Région"
-                        >
-                          <MenuItem value="Conakry">Conakry</MenuItem>
-                          <MenuItem value="Boké">Boké</MenuItem>
-                          <MenuItem value="Kindia">Kindia</MenuItem>
-                          <MenuItem value="Mamou">Mamou</MenuItem>
-                          <MenuItem value="Labé">Labé</MenuItem>
-                          <MenuItem value="Faranah">Faranah</MenuItem>
-                          <MenuItem value="Kankan">Kankan</MenuItem>
-                          <MenuItem value="N'Zérékoré">N'Zérékoré</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Préfecture"
-                        name="prefecture"
-                        value={formData.prefecture}
-                        onChange={handleInputChange}
-                        disabled={!editMode}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Commune"
-                        name="commune"
-                        value={formData.commune}
-                        onChange={handleInputChange}
-                        disabled={!editMode}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Quartier"
-                        name="quartier"
-                        value={formData.quartier}
-                        onChange={handleInputChange}
-                        disabled={!editMode}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Adresse complète"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        disabled={!editMode}
-                        multiline
-                        rows={2}
-                      />
-                    </Grid>
-                  </Grid>
+                  {editMode ? (
+                    <LocationSelector 
+                      formData={formData}
+                      handleInputChange={handleInputChange}
+                      showGPS={true}
+                      required={true}
+                    />
+                  ) : (
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Région :</strong> {formData.region}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Préfecture :</strong> {formData.prefecture}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Commune :</strong> {formData.commune}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Quartier :</strong> {formData.quartier}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Adresse :</strong> {formData.address}
+                      </Typography>
+                    </Box>
+                  )}
                 </Grid>
 
                 {editMode && (

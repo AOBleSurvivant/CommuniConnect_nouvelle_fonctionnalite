@@ -89,6 +89,12 @@ const Navigation = () => {
       description: 'Diffusions en direct'
     },
     { 
+      text: 'Amis', 
+      icon: <Person />, 
+      path: '/friends',
+      description: 'Gérer vos amis et invitations'
+    },
+    { 
       text: 'Demandes d\'aide', 
       icon: <Help />, 
       path: '/help',
@@ -244,8 +250,8 @@ const Navigation = () => {
 
             {/* Navigation desktop */}
             {!isMobile && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                {menuItems.slice(0, 4).map((item) => (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {menuItems.map((item) => (
                   <Tooltip key={item.text} title={item.description} arrow>
                     <Button
                       color="inherit"
@@ -258,6 +264,9 @@ const Navigation = () => {
                         '&:hover': {
                           backgroundColor: theme.palette.primary.light + '10',
                         },
+                        fontSize: '0.875rem',
+                        px: 1.5,
+                        py: 0.5,
                       }}
                     >
                       {item.text}

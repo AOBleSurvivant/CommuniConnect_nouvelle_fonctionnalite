@@ -29,6 +29,7 @@ import {
   ExpandMore,
   ExpandLess,
 } from '@mui/icons-material';
+import { formatError } from '../../utils/errorHandler';
 
 const CreatePost = ({ onSubmit, onCancel }) => {
   const theme = useTheme();
@@ -170,7 +171,7 @@ const CreatePost = ({ onSubmit, onCancel }) => {
         {/* Message d'erreur */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            {formatError(error)}
           </Alert>
         )}
 
