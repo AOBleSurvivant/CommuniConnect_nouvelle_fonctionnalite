@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Typography, Avatar } from '@mui/material';
+import { Avatar, Box, Typography } from '@mui/material';
+import DefaultAvatar from '../common/DefaultAvatar';
 import { useSelector } from 'react-redux';
 
 const TypingIndicator = ({ conversationId }) => {

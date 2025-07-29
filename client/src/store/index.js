@@ -3,34 +3,30 @@ import authReducer from './slices/authSlice';
 import postsReducer from './slices/postsSlice';
 import alertsReducer from './slices/alertsSlice';
 import eventsReducer from './slices/eventsSlice';
-import helpReducer from './slices/helpSlice';
-import mapReducer from './slices/mapSlice';
-import uiReducer from './slices/uiSlice';
+import messagesReducer from './slices/messagesSlice';
 import friendsReducer from './slices/friendsSlice';
 import livestreamsReducer from './slices/livestreamsSlice';
-import moderationReducer from './slices/moderationSlice';
 import notificationsReducer from './slices/notificationsSlice';
-import messagesReducer from './slices/messagesSlice';
+import moderationReducer from './slices/moderationSlice';
+import mapReducer from './slices/mapSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     auth: authReducer,
     posts: postsReducer,
     alerts: alertsReducer,
     events: eventsReducer,
-    help: helpReducer,
-    map: mapReducer,
-    ui: uiReducer,
-  friends: friendsReducer,
-    livestreams: livestreamsReducer,
-    moderation: moderationReducer,
-    notifications: notificationsReducer,
     messages: messagesReducer,
+    friends: friendsReducer,
+    livestreams: livestreamsReducer,
+    notifications: notificationsReducer,
+    moderation: moderationReducer,
+    map: mapReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
+        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
     }),
 });

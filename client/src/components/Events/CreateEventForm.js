@@ -44,14 +44,17 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
 
   const [errors, setErrors] = useState({});
 
+  // Types d'événements correspondant au backend
   const eventTypes = [
-    { value: 'community', label: 'Communautaire', color: 'primary' },
-    { value: 'cultural', label: 'Culturel', color: 'secondary' },
-    { value: 'sports', label: 'Sport', color: 'success' },
-    { value: 'educational', label: 'Éducatif', color: 'info' },
-    { value: 'business', label: 'Business', color: 'warning' },
-    { value: 'religious', label: 'Religieux', color: 'default' },
-    { value: 'other', label: 'Autre', color: 'default' }
+    { value: 'reunion', label: 'Réunion', color: 'primary' },
+    { value: 'formation', label: 'Formation', color: 'secondary' },
+    { value: 'nettoyage', label: 'Nettoyage', color: 'success' },
+    { value: 'festival', label: 'Festival', color: 'info' },
+    { value: 'sport', label: 'Sport', color: 'warning' },
+    { value: 'culture', label: 'Culture', color: 'default' },
+    { value: 'sante', label: 'Santé', color: 'error' },
+    { value: 'education', label: 'Éducation', color: 'primary' },
+    { value: 'autre', label: 'Autre', color: 'default' }
   ];
 
   const handleInputChange = (event) => {
@@ -73,69 +76,126 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
   const validateForm = () => {
     const newErrors = {};
 
+    // Validation du titre
     if (!formData.title.trim()) {
       newErrors.title = 'Le titre est requis';
+    } else if (formData.title.trim().length < 5) {
+      newErrors.title = 'Le titre doit contenir au moins 5 caractères';
+    } else if (formData.title.trim().length > 100) {
+      newErrors.title = 'Le titre ne peut pas dépasser 100 caractères';
     }
 
+    // Validation de la description
     if (!formData.description.trim()) {
       newErrors.description = 'La description est requise';
+    } else if (formData.description.trim().length < 10) {
+      newErrors.description = 'La description doit contenir au moins 10 caractères';
+    } else if (formData.description.trim().length > 2000) {
+      newErrors.description = 'La description ne peut pas dépasser 2000 caractères';
     }
 
+    // Validation du type
     if (!formData.type) {
       newErrors.type = 'Le type d\'événement est requis';
     }
 
+    // Validation de la date
     if (!formData.date) {
       newErrors.date = 'La date est requise';
+    } else {
+      const selectedDate = new Date(formData.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        newErrors.date = 'La date ne peut pas être dans le passé';
+      }
     }
 
+    // Validation de l'heure
     if (!formData.time) {
       newErrors.time = 'L\'heure est requise';
     }
 
+    // Validation de la localisation
+    if (!formData.region.trim()) {
+      newErrors.region = 'La région est requise';
+    }
+    if (!formData.prefecture.trim()) {
+      newErrors.prefecture = 'La préfecture est requise';
+    }
+    if (!formData.commune.trim()) {
+      newErrors.commune = 'La commune est requise';
+    }
+    if (!formData.quartier.trim()) {
+      newErrors.quartier = 'Le quartier est requis';
+    }
     if (!formData.address.trim()) {
-      newErrors.address = 'La localisation est requise';
+      newErrors.address = 'L\'adresse est requise';
+    }
+
+    // Validation des coordonnées GPS
+    if (!formData.latitude || !formData.longitude) {
+      newErrors.location = 'Les coordonnées GPS sont requises';
+    } else {
+      const lat = parseFloat(formData.latitude);
+      const lng = parseFloat(formData.longitude);
+      if (isNaN(lat) || isNaN(lng)) {
+        newErrors.location = 'Les coordonnées GPS sont invalides';
+      } else if (lat < 7.1935 || lat > 12.6769 || lng < -15.0820 || lng > -7.6411) {
+        newErrors.location = 'Les coordonnées doivent être dans les limites de la Guinée';
+      }
+    }
+
+    // Validation du nombre de participants
+    if (formData.maxParticipants) {
+      const participants = parseInt(formData.maxParticipants);
+      if (isNaN(participants) || participants < 1 || participants > 10000) {
+        newErrors.maxParticipants = 'Le nombre de participants doit être entre 1 et 10000';
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  
   const handleSubmit = (event) => {
     event.preventDefault();
     
     if (validateForm()) {
-      // Formater les données selon le format attendu par l'API
+      // Formater les données pour l'API
       const formattedData = {
-        title: formData.title,
-        description: formData.description,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         type: formData.type,
-        category: formData.type, // Utiliser le type comme catégorie par défaut
-        startDate: new Date(formData.date).toISOString(),
-        endDate: new Date(formData.date).toISOString(), // Même date pour l'instant
-        startTime: formData.time,
-        endTime: formData.time, // Même heure pour l'instant
-        venue: formData.address,
-        address: formData.address,
-        latitude: parseFloat(formData.latitude) || null,
-        longitude: parseFloat(formData.longitude) || null,
-        capacity: parseInt(formData.maxParticipants) || null,
-        isFree: true,
-        price: { amount: 0, currency: 'GNF' },
-        tags: [],
+        category: formData.category || 'communautaire',
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        venue: formData.venue.trim(),
+        address: formData.address.trim(),
+        capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
+        isFree: formData.isFree !== undefined ? formData.isFree : true,
+        price: formData.isFree ? { amount: 0, currency: 'GNF' } : {
+          amount: parseFloat(formData.price?.amount || 0),
+          currency: formData.price?.currency || 'GNF'
+        },
+        tags: formData.tags || [],
+        contactPhone: formData.contactPhone?.trim() || '',
+        contactEmail: formData.contactEmail?.trim() || '',
         location: {
           region: formData.region,
           prefecture: formData.prefecture,
           commune: formData.commune,
           quartier: formData.quartier,
-          address: formData.address,
+          address: formData.address.trim(),
           coordinates: {
-            latitude: parseFloat(formData.latitude) || null,
-            longitude: parseFloat(formData.longitude) || null
+            latitude: parseFloat(formData.latitude) || undefined,
+            longitude: parseFloat(formData.longitude) || undefined
           }
         },
-        contactPhone: formData.contactPhone,
-        image: formData.image
+        image: formData.image || undefined
       };
       
       console.log('📤 Données formatées pour l\'API:', formattedData);
@@ -187,7 +247,7 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
                 value={formData.title}
                 onChange={handleInputChange}
                 error={!!errors.title}
-                helperText={errors.title}
+                helperText={errors.title || 'Entre 5 et 100 caractères'}
                 placeholder="Ex: Fête de quartier de Kaloum"
               />
             </Grid>
@@ -202,7 +262,7 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
                 multiline
                 rows={4}
                 error={!!errors.description}
-                helperText={errors.description}
+                helperText={errors.description || 'Entre 10 et 2000 caractères'}
                 placeholder="Décrivez votre événement, le programme, les activités prévues..."
               />
             </Grid>
@@ -265,6 +325,9 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
                 InputLabelProps={{
                   shrink: true,
                 }}
+                inputProps={{
+                  min: new Date().toISOString().split('T')[0]
+                }}
               />
             </Grid>
 
@@ -293,6 +356,8 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
                 value={formData.maxParticipants}
                 onChange={handleInputChange}
                 placeholder="Ex: 100"
+                error={!!errors.maxParticipants}
+                helperText={errors.maxParticipants || 'Entre 1 et 10000'}
                 InputProps={{
                   endAdornment: <InputAdornment position="end">personnes</InputAdornment>,
                 }}
@@ -307,6 +372,11 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
                 showGPS={true}
                 required={true}
               />
+              {errors.location && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {errors.location}
+                </Alert>
+              )}
             </Grid>
 
             {/* Image optionnelle */}

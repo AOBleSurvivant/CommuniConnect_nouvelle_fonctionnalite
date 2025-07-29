@@ -163,14 +163,18 @@ class NotificationService {
   showToastNotification(notification) {
     // Vérifier si l'utilisateur est sur la page
     if (document.visibilityState === 'visible') {
-      // Créer une notification native du navigateur
+      // Créer une notification native du navigateur seulement si autorisé
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(notification.title, {
-          body: notification.message,
-          icon: '/favicon.ico',
-          tag: notification.id,
-          requireInteraction: notification.priority === 'high'
-        });
+        try {
+          new Notification(notification.title, {
+            body: notification.message,
+            icon: '/favicon.ico',
+            tag: notification.id,
+            requireInteraction: notification.priority === 'high'
+          });
+        } catch (error) {
+          console.warn('Erreur lors de l\'affichage de la notification:', error);
+        }
       }
     }
   }
@@ -178,10 +182,23 @@ class NotificationService {
   // Demander la permission pour les notifications
   async requestPermission() {
     if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
+      try {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      } catch (error) {
+        console.warn('Erreur lors de la demande de permission:', error);
+        return false;
+      }
     }
     return false;
+  }
+
+  // Vérifier la permission sans demander
+  checkPermission() {
+    if ('Notification' in window) {
+      return Notification.permission;
+    }
+    return 'denied';
   }
 
   // Obtenir les notifications

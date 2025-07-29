@@ -65,6 +65,12 @@ export const postsService = {
     return response.data;
   },
 
+  // Créer un repost
+  createRepost: async (repostData) => {
+    const response = await api.post(POSTS_URL, repostData);
+    return response.data;
+  },
+
   // Récupérer les posts d'un utilisateur
   getUserPosts: async (userId, params = {}) => {
     const queryParams = new URLSearchParams();

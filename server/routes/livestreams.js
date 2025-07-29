@@ -223,6 +223,136 @@ router.get('/alerts', async (req, res) => {
   }
 });
 
+// @route   GET /api/livestreams/live
+// @desc    Obtenir les lives en direct
+// @access  Public
+router.get('/live', async (req, res) => {
+  try {
+    // Vérifier si MongoDB est disponible
+    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
+      // Mode développement sans MongoDB - lives en direct fictifs
+      const mockLiveStreams = [
+        {
+          _id: '507f1f77bcf86cd799439041',
+          type: 'alert',
+          title: 'Incendie dans le quartier Centre',
+          description: 'Incendie signalé rue principale, pompiers en route',
+          status: 'live',
+          urgency: 'critical',
+          startedAt: new Date(Date.now() - 10 * 60 * 1000),
+          location: {
+            region: 'Conakry',
+            prefecture: 'Conakry',
+            commune: 'Kaloum',
+            quartier: 'Centre'
+          },
+          visibility: 'quartier',
+          author: {
+            _id: '507f1f77bcf86cd799439042',
+            firstName: 'Mamadou',
+            lastName: 'Diallo',
+            profilePicture: null,
+            isVerified: true
+          },
+          stats: {
+            currentViewers: 23,
+            totalViewers: 45,
+            totalMessages: 12
+          },
+          createdAt: new Date(Date.now() - 10 * 60 * 1000),
+          updatedAt: new Date()
+        }
+      ];
+
+      res.json({
+        success: true,
+        data: mockLiveStreams
+      });
+      return;
+    }
+
+    const liveStreams = await LiveStream.getLiveStreams();
+
+    res.json({
+      success: true,
+      data: liveStreams
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des lives en direct:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des lives en direct'
+    });
+  }
+});
+
+// @route   GET /api/livestreams/scheduled
+// @desc    Obtenir les lives programmés
+// @access  Public
+router.get('/scheduled', async (req, res) => {
+  try {
+    // Vérifier si MongoDB est disponible
+    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
+      // Mode développement sans MongoDB - lives programmés fictifs
+      const mockScheduledStreams = [
+        {
+          _id: '507f1f77bcf86cd799439047',
+          type: 'meeting',
+          title: 'Réunion de quartier - Sécurité',
+          description: 'Réunion pour discuter de la sécurité du quartier',
+          status: 'scheduled',
+          urgency: 'medium',
+          scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // Dans 2 heures
+          location: {
+            region: 'Conakry',
+            prefecture: 'Conakry',
+            commune: 'Kaloum',
+            quartier: 'Centre'
+          },
+          visibility: 'quartier',
+          author: {
+            _id: '507f1f77bcf86cd799439048',
+            firstName: 'Fatou',
+            lastName: 'Camara',
+            profilePicture: null,
+            isVerified: true
+          },
+          stats: {
+            currentViewers: 0,
+            totalViewers: 0,
+            totalMessages: 0
+          },
+          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Il y a 1 jour
+          updatedAt: new Date()
+        }
+      ];
+
+      res.json({
+        success: true,
+        data: mockScheduledStreams
+      });
+      return;
+    }
+
+    const scheduledStreams = await LiveStream.find({ status: 'scheduled' })
+      .populate('author', 'firstName lastName profilePicture isVerified')
+      .sort({ scheduledAt: 1 });
+
+    res.json({
+      success: true,
+      data: scheduledStreams
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des lives programmés:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des lives programmés'
+    });
+  }
+});
+
 // @route   GET /api/livestreams/community
 // @desc    Obtenir les lives de la communauté locale
 // @access  Public

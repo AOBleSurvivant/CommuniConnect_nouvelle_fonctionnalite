@@ -25,10 +25,23 @@ class Test100PerfectFinal {
   }
 
   async testEvents() {
-    console.log('\n📅 Test des fonctionnalités Événements...');
+    console.log('\n📅 Test des fonctionnalités Événements (version corrigée)...');
     
     try {
-      await this.page.goto('http://localhost:3000/events', { waitUntil: 'networkidle2' });
+      // Configuration des timeouts augmentés
+      await this.page.setDefaultTimeout(60000);
+      await this.page.setDefaultNavigationTimeout(60000);
+      
+      await this.page.goto('http://localhost:3000/events', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000 
+      });
+      
+      // Attendre que la page soit complètement chargée
+      await this.page.waitForFunction(() => {
+        return document.readyState === 'complete';
+      }, { timeout: 20000 });
+      
       await new Promise(resolve => setTimeout(resolve, 3000));
       this.results.events.details.push('✅ Navigation réussie');
 

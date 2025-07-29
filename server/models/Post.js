@@ -19,8 +19,28 @@ const postSchema = new mongoose.Schema({
   // Type de publication
   type: {
     type: String,
-    enum: ['general', 'entraide', 'vente', 'alerte', 'besoin', 'evenement', 'information'],
+    enum: ['general', 'entraide', 'vente', 'alerte', 'besoin', 'evenement', 'information', 'repost'],
     default: 'general'
+  },
+
+  // Champs pour les reposts
+  isRepost: {
+    type: Boolean,
+    default: false
+  },
+  
+  originalPost: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post',
+    required: function() {
+      return this.isRepost === true;
+    }
+  },
+  
+  repostContent: {
+    type: String,
+    maxlength: [500, 'Le contenu du repost ne peut pas dépasser 500 caractères'],
+    trim: true
   },
 
   // Icône contextuelle

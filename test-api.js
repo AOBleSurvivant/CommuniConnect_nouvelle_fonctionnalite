@@ -1,98 +1,53 @@
-const https = require('https');
 const http = require('http');
 
-// Données de test pour un utilisateur guinéen
-const testUserData = {
-  firstName: "Test",
-  lastName: "Guinéen",
-  email: "test@guinee.gn",
-  phone: "+22461234567",
-  password: "password123",
-  latitude: 9.5144,
-  longitude: -13.6783,
-  quartier: "Centre",
-  address: "Test Address",
-  dateOfBirth: "1990-01-01",
-  gender: "Homme"
-};
+function testEndpoint(path) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'localhost',
+      port: 5000,
+      path: `/api${path}`,
+      method: 'GET'
+    };
 
-// Données de test pour un utilisateur non-guinéen (pour tester le rejet)
-const nonGuineanUserData = {
-  firstName: "Test",
-  lastName: "Étranger",
-  email: "test@etranger.com",
-  phone: "+22461234567",
-  password: "password123",
-  latitude: 48.8566, // Paris, France
-  longitude: 2.3522,
-  quartier: "Centre",
-  address: "Test Address",
-  dateOfBirth: "1990-01-01",
-  gender: "Homme"
-};
-
-function testAPI(data, description) {
-  const postData = JSON.stringify(data);
-  
-  const options = {
-    hostname: 'localhost',
-    port: 5000,
-    path: '/api/auth/register',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(postData)
-    }
-  };
-
-  const req = http.request(options, (res) => {
-    let responseData = '';
-    
-    res.on('data', (chunk) => {
-      responseData += chunk;
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        resolve({
+          status: res.statusCode,
+          data: data
+        });
+      });
     });
-    
-    res.on('end', () => {
-      console.log(`\n=== ${description} ===`);
-      console.log(`Status: ${res.statusCode}`);
-      console.log('Response:', responseData);
-      
-      try {
-        const parsed = JSON.parse(responseData);
-        if (parsed.success) {
-          console.log('✅ Succès: Utilisateur créé avec succès');
-        } else {
-          console.log('❌ Erreur:', parsed.message);
-        }
-      } catch (e) {
-        console.log('❌ Erreur de parsing JSON');
-      }
+
+    req.on('error', (err) => {
+      reject(err);
     });
-  });
 
-  req.on('error', (e) => {
-    console.error(`❌ Erreur de requête: ${e.message}`);
+    req.end();
   });
-
-  req.write(postData);
-  req.end();
 }
 
-console.log('🧪 Test de l\'API d\'inscription avec validation géographique\n');
+async function testAPI() {
+  console.log('🔍 Test des endpoints API...\n');
 
-// Test 1: Utilisateur guinéen (devrait réussir)
-testAPI(testUserData, 'Test 1: Utilisateur guinéen (Conakry)');
+  const endpoints = [
+    '/health',
+    '/livestreams',
+    '/events',
+    '/alerts'
+  ];
 
-// Attendre 2 secondes avant le prochain test
-setTimeout(() => {
-  // Test 2: Utilisateur non-guinéen (devrait échouer)
-  testAPI(nonGuineanUserData, 'Test 2: Utilisateur non-guinéen (Paris)');
-}, 2000);
+  for (const endpoint of endpoints) {
+    try {
+      const result = await testEndpoint(endpoint);
+      console.log(`✅ ${endpoint}: ${result.status} - ${result.data.substring(0, 100)}...`);
+    } catch (error) {
+      console.log(`❌ ${endpoint}: Erreur - ${error.message}`);
+    }
+  }
+}
 
-// Test 3: Données manquantes (devrait échouer)
-setTimeout(() => {
-  const invalidData = { ...testUserData };
-  delete invalidData.latitude;
-  delete invalidData.longitude;
-  testAPI(invalidData, 'Test 3: Coordonnées manquantes');
-}, 4000); 
+testAPI(); 

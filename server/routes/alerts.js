@@ -211,45 +211,68 @@ router.get('/', [
 // @access  Public
 router.get('/urgent', async (req, res) => {
   try {
-    // En mode développement, retourner des données fictives
-    if (process.env.NODE_ENV === 'development') {
+    // Vérifier si MongoDB est disponible
+    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
+      // Mode développement sans MongoDB - alertes urgentes fictives
       const mockUrgentAlerts = [
         {
-          _id: '1',
-          title: 'Accident de circulation sur la route de Donka',
-          description: 'Accident grave impliquant deux véhicules sur la route principale de Donka.',
-          type: 'accident',
-          category: 'circulation',
+          _id: '507f1f77bcf86cd799439021',
+          title: 'Incendie dans le quartier Centre',
+          description: 'Incendie signalé rue principale, pompiers en route',
+          type: 'securite',
+          category: 'incendie',
           priority: 'urgent',
-          status: 'active',
+          urgency: 'critical',
           location: {
-            coordinates: { latitude: 9.5370, longitude: -13.6785 },
             region: 'Conakry',
             prefecture: 'Conakry',
             commune: 'Kaloum',
-            quartier: 'Donka',
-            address: 'Route de Donka, près du marché central'
+            quartier: 'Centre',
+            coordinates: {
+              latitude: 9.5370,
+              longitude: -13.6785
+            }
           },
-          author: {
-            _id: 'user1',
-            firstName: 'Mamadou',
-            lastName: 'Diallo',
-            profilePicture: null,
-            isVerified: true
+          expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // Expire dans 2h
+          status: 'active',
+          createdAt: new Date(Date.now() - 30 * 60 * 1000), // Il y a 30 minutes
+          updatedAt: new Date()
+        },
+        {
+          _id: '507f1f77bcf86cd799439022',
+          title: 'Accident de circulation - Route bloquée',
+          description: 'Accident de circulation sur la route principale, circulation perturbée',
+          type: 'infrastructure',
+          category: 'circulation',
+          priority: 'urgent',
+          urgency: 'high',
+          location: {
+            region: 'Conakry',
+            prefecture: 'Conakry',
+            commune: 'Kaloum',
+            quartier: 'Centre',
+            coordinates: {
+              latitude: 9.5370,
+              longitude: -13.6785
+            }
           },
-          interactions: { views: 15, shares: 3, confirmations: 8, denials: 1 },
-          createdAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+          expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // Expire dans 4h
+          status: 'active',
+          createdAt: new Date(Date.now() - 15 * 60 * 1000), // Il y a 15 minutes
+          updatedAt: new Date()
         }
       ];
 
-      return res.json({
+      res.json({
         success: true,
-        data: mockUrgentAlerts
+        data: {
+          alerts: mockUrgentAlerts,
+          count: mockUrgentAlerts.length
+        }
       });
+      return;
     }
 
-    // En mode production, utiliser MongoDB
     const urgentAlerts = await Alert.find({
       priority: 'urgent',
       status: 'active',
@@ -261,7 +284,10 @@ router.get('/urgent', async (req, res) => {
 
     res.json({
       success: true,
-      data: urgentAlerts
+      data: {
+        alerts: urgentAlerts,
+        count: urgentAlerts.length
+      }
     });
 
   } catch (error) {
@@ -277,9 +303,9 @@ router.get('/urgent', async (req, res) => {
 // @desc    Obtenir les alertes à proximité
 // @access  Public
 router.get('/nearby', [
-  query('latitude').isFloat(),
-  query('longitude').isFloat(),
-  query('radius').optional().isFloat({ min: 0.1, max: 50 })
+  query('latitude').isFloat().withMessage('Latitude requise'),
+  query('longitude').isFloat().withMessage('Longitude requise'),
+  query('radius').optional().isFloat({ min: 0.1, max: 50 }).withMessage('Rayon invalide')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -290,53 +316,93 @@ router.get('/nearby', [
       });
     }
 
-    const { latitude, longitude, radius = 5 } = req.query;
+    const { latitude, longitude, radius = 10 } = req.query;
 
-    // En mode développement, retourner des données fictives
-    if (process.env.NODE_ENV === 'development') {
+    // Vérifier si MongoDB est disponible
+    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
+      // Mode développement sans MongoDB - alertes à proximité fictives
       const mockNearbyAlerts = [
         {
-          _id: '1',
-          title: 'Accident de circulation sur la route de Donka',
-          description: 'Accident grave impliquant deux véhicules sur la route principale de Donka.',
-          type: 'accident',
-          category: 'circulation',
-          priority: 'urgent',
-          status: 'active',
+          _id: '507f1f77bcf86cd799439023',
+          title: 'Coupure d\'électricité prévue',
+          description: 'Coupure d\'électricité prévue dans le quartier Centre de 14h à 16h pour maintenance',
+          type: 'infrastructure',
+          category: 'coupure_electricite',
+          priority: 'important',
+          urgency: 'medium',
           location: {
-            coordinates: { latitude: 9.5370, longitude: -13.6785 },
             region: 'Conakry',
             prefecture: 'Conakry',
             commune: 'Kaloum',
-            quartier: 'Donka',
-            address: 'Route de Donka, près du marché central'
+            quartier: 'Centre',
+            coordinates: {
+              latitude: parseFloat(latitude) + 0.001,
+              longitude: parseFloat(longitude) + 0.001
+            }
           },
-          author: {
-            _id: 'user1',
-            firstName: 'Mamadou',
-            lastName: 'Diallo'
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Expire dans 24h
+          status: 'active',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // Il y a 2h
+          updatedAt: new Date()
+        },
+        {
+          _id: '507f1f77bcf86cd799439024',
+          title: 'Travaux de voirie',
+          description: 'Travaux de réparation de la chaussée rue principale',
+          type: 'infrastructure',
+          category: 'circulation',
+          priority: 'important',
+          urgency: 'medium',
+          location: {
+            region: 'Conakry',
+            prefecture: 'Conakry',
+            commune: 'Kaloum',
+            quartier: 'Centre',
+            coordinates: {
+              latitude: parseFloat(latitude) - 0.001,
+              longitude: parseFloat(longitude) - 0.001
+            }
           },
-          createdAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+          expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // Expire dans 12h
+          status: 'active',
+          createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), // Il y a 1h
+          updatedAt: new Date()
         }
       ];
 
-      return res.json({
+      res.json({
         success: true,
-        data: mockNearbyAlerts
+        data: {
+          alerts: mockNearbyAlerts,
+          count: mockNearbyAlerts.length
+        }
       });
+      return;
     }
 
-    // En mode production, utiliser MongoDB
-    const nearbyAlerts = await Alert.findNearby(
-      parseFloat(latitude),
-      parseFloat(longitude),
-      parseFloat(radius)
-    );
+    const nearbyAlerts = await Alert.find({
+      status: 'active',
+      expiresAt: { $gt: new Date() },
+      'location.coordinates': {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          },
+          $maxDistance: radius * 1000 // Convertir en mètres
+        }
+      }
+    })
+    .populate('author', 'firstName lastName profilePicture isVerified')
+    .sort({ priority: -1, createdAt: -1 })
+    .limit(20);
 
     res.json({
       success: true,
-      data: nearbyAlerts
+      data: {
+        alerts: nearbyAlerts,
+        count: nearbyAlerts.length
+      }
     });
 
   } catch (error) {

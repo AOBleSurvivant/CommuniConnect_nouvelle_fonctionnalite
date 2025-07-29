@@ -33,7 +33,6 @@ const LocationSelector = ({ formData, handleInputChange, showGPS = true, require
         }
         const data = await response.json();
         setGeographyData(data.Guinée?.Régions || []);
-        console.log('Données géographiques chargées:', data.Guinée?.Régions?.length || 0, 'régions');
       } catch (error) {
         console.error('Erreur lors du chargement des données géographiques:', error);
         setLocationError('Impossible de charger les données géographiques. Veuillez saisir manuellement.');
@@ -44,41 +43,31 @@ const LocationSelector = ({ formData, handleInputChange, showGPS = true, require
 
   // Initialiser les données en cascade quand il y a déjà des valeurs
   useEffect(() => {
-    console.log('🔍 useEffect cascade - geographyData:', geographyData?.length, 'formData.region:', formData.region);
-    
     if (geographyData && formData.region) {
       const selectedRegion = geographyData.find(r => r.nom === formData.region);
-      console.log('🔍 Région trouvée:', selectedRegion?.nom);
       
       if (selectedRegion) {
         setPrefectures(selectedRegion.préfectures || []);
-        console.log('🔍 Préfectures chargées:', selectedRegion.préfectures?.length || 0);
         
         if (formData.prefecture) {
           const selectedPrefecture = selectedRegion.préfectures?.find(p => p.nom === formData.prefecture);
-          console.log('🔍 Préfecture trouvée:', selectedPrefecture?.nom);
           
           if (selectedPrefecture) {
             setCommunes(selectedPrefecture.communes || []);
-            console.log('🔍 Communes chargées:', selectedPrefecture.communes?.length || 0);
             
             if (formData.commune) {
               const selectedCommune = selectedPrefecture.communes?.find(c => c.nom === formData.commune);
-              console.log('🔍 Commune trouvée:', selectedCommune?.nom);
               
               if (selectedCommune) {
                 setQuartiers(selectedCommune.quartiers || []);
-                console.log('🔍 Quartiers chargés:', selectedCommune.quartiers?.length || 0);
               } else {
                 // Réinitialiser si la commune n'existe pas
-                console.log('⚠️ Commune non trouvée, réinitialisation');
                 handleInputChange({ target: { name: 'commune', value: '' } });
                 handleInputChange({ target: { name: 'quartier', value: '' } });
               }
             }
           } else {
             // Réinitialiser si la préfecture n'existe pas
-            console.log('⚠️ Préfecture non trouvée, réinitialisation');
             handleInputChange({ target: { name: 'prefecture', value: '' } });
             handleInputChange({ target: { name: 'commune', value: '' } });
             handleInputChange({ target: { name: 'quartier', value: '' } });
@@ -86,7 +75,6 @@ const LocationSelector = ({ formData, handleInputChange, showGPS = true, require
         }
       } else {
         // Réinitialiser si la région n'existe pas
-        console.log('⚠️ Région non trouvée, réinitialisation');
         handleInputChange({ target: { name: 'region', value: '' } });
         handleInputChange({ target: { name: 'prefecture', value: '' } });
         handleInputChange({ target: { name: 'commune', value: '' } });

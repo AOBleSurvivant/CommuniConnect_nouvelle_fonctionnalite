@@ -188,9 +188,9 @@ const AlertsPage = () => {
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
             🚨 Alertes Communautaires
           </Typography>
-        <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary">
             Restez informé des événements importants dans votre communauté
-        </Typography>
+          </Typography>
         </Box>
 
         <Button
@@ -206,13 +206,13 @@ const AlertsPage = () => {
       {/* Messages d'état */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => dispatch(clearError())}>
-          <Typography>{formatError(error) || 'Une erreur est survenue'}</Typography>
+          {formatError(error) || 'Une erreur est survenue'}
         </Alert>
       )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => dispatch(clearSuccess())}>
-          <Typography>{success || 'Opération réussie'}</Typography>
+          {success || 'Opération réussie'}
         </Alert>
       )}
 

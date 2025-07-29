@@ -77,7 +77,7 @@ const MessageBubble = ({ message, isOwn, onReply, onDelete }) => {
     >
       {!isOwn && (
         <Avatar
-          src={message.sender?.avatar}
+          src={message.sender?.profilePicture}
           sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }}
         >
           {message.sender?.firstName?.charAt(0)}
@@ -290,7 +290,7 @@ const MessageBubble = ({ message, isOwn, onReply, onDelete }) => {
 
       {isOwn && (
         <Avatar
-          src={message.sender?.avatar}
+          src={message.sender?.profilePicture}
           sx={{ width: 32, height: 32, ml: 1, mt: 0.5 }}
         >
           {message.sender?.firstName?.charAt(0)}

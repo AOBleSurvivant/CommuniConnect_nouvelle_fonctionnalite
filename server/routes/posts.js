@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const router = express.Router();
+const crypto = require('crypto'); // Added for generating unique IDs
 
 // Données fictives pour le développement
 let posts = [
@@ -163,68 +164,95 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/posts - Créer un nouveau post
-router.post('/', [
-  auth,
+router.post('/', auth, [
   body('content').trim().isLength({ min: 1, max: 2000 }).withMessage('Le contenu doit contenir entre 1 et 2000 caractères'),
-  body('type').isIn(['community', 'alert', 'event', 'help', 'announcement']).withMessage('Type de post invalide'),
-  body('location.region').optional(),
-  body('location.prefecture').optional(),
-  body('location.commune').optional(),
-  body('location.quartier').optional(),
-  body('isPublic').optional().isBoolean().withMessage('isPublic doit être un booléen')
+  body('type').optional().isIn(['general', 'entraide', 'vente', 'alerte', 'besoin', 'evenement', 'information', 'repost']).withMessage('Type de post invalide'),
+  body('visibility').optional().isIn(['public', 'quartier', 'commune', 'prefecture', 'region']).withMessage('Visibilité invalide'),
+  body('location.region').optional().isIn(['Conakry', 'Boké', 'Kindia', 'Mamou', 'Labé', 'Faranah', 'Kankan', 'N\'Zérékoré']).withMessage('Région invalide'),
+  body('tags').optional().isArray().withMessage('Les tags doivent être un tableau'),
+  body('isRepost').optional().isBoolean().withMessage('isRepost doit être un booléen'),
+  body('originalPost').optional().isMongoId().withMessage('ID de post original invalide'),
+  body('repostContent').optional().isLength({ max: 500 }).withMessage('Le contenu du repost ne peut pas dépasser 500 caractères')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Données invalides',
+        errors: errors.array()
+      });
     }
 
     const {
       content,
-      media = [],
+      type = 'general',
+      visibility = 'quartier',
       location,
-      type = 'community',
-      isPublic = true
+      tags = [],
+      media = [],
+      isRepost = false,
+      originalPost,
+      repostContent
     } = req.body;
 
+    // Validation spécifique pour les reposts
+    if (isRepost) {
+      if (!originalPost) {
+        return res.status(400).json({
+          success: false,
+          message: 'Le post original est requis pour un repost'
+        });
+      }
+
+      // Vérifier que le post original existe
+      const originalPostExists = posts.find(p => p._id === originalPost);
+      if (!originalPostExists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Le post original n\'existe pas'
+        });
+      }
+    }
+
     const newPost = {
-      _id: Date.now().toString(),
+      _id: crypto.randomBytes(16).toString('hex'),
       author: {
-        _id: req.user._id || req.user.id,
-        firstName: req.user.firstName,
-        lastName: req.user.lastName,
-        avatar: null
+        _id: req.user.id,
+        firstName: req.user.firstName || 'Utilisateur',
+        lastName: req.user.lastName || 'Connecté',
+        name: `${req.user.firstName || 'Utilisateur'} ${req.user.lastName || 'Connecté'}`,
+        profilePicture: req.user.profilePicture
       },
-      content,
-      media: media || [],
-      location: {
-        region: location?.region || req.user.region || 'Conakry',
-        prefecture: location?.prefecture || req.user.prefecture || 'Conakry',
-        commune: location?.commune || req.user.commune || 'Kaloum',
-        quartier: location?.quartier || req.user.quartier || 'Centre',
-        coordinates: location?.coordinates || req.user.coordinates || { latitude: 9.5144, longitude: -13.6783 }
+      content: isRepost ? (repostContent || content) : content,
+      type: isRepost ? 'repost' : type,
+      isRepost,
+      originalPost: isRepost ? originalPost : undefined,
+      repostContent: isRepost ? repostContent : undefined,
+      visibility,
+      location: location || {
+        region: req.user.region || 'Conakry',
+        prefecture: req.user.prefecture || 'Conakry',
+        commune: req.user.commune || '',
+        quartier: req.user.quartier || ''
       },
-      type,
+      tags,
+      media,
       reactions: {
-        like: [],
-        love: [],
-        helpful: [],
-        sad: [],
-        angry: []
+        likes: [],
+        shares: [],
+        comments: []
       },
-      comments: [],
       shares: 0,
-      isPublic,
-      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    posts.unshift(newPost); // Ajouter au début du tableau
+    posts.unshift(newPost);
 
     res.status(201).json({
       success: true,
-      message: 'Post créé avec succès',
+      message: isRepost ? 'Repost créé avec succès' : 'Post créé avec succès',
       data: newPost
     });
   } catch (error) {

@@ -100,10 +100,32 @@ export const deleteComment = createAsyncThunk(
 
 export const sharePost = createAsyncThunk(
   'posts/sharePost',
-  async (id, { rejectWithValue }) => {
+  async ({ postId, type = 'share', content = '' }, { rejectWithValue }) => {
     try {
-      const response = await postsService.sharePost(id);
-      return { id, shares: response.data.shares };
+      if (type === 'repost') {
+        // Pour le repost, créer un nouveau post qui référence l'original
+        const repostData = {
+          content: content,
+          type: 'repost',
+          originalPost: postId,
+          isRepost: true
+        };
+        const response = await postsService.createPost(repostData);
+        return { 
+          id: postId, 
+          shares: response.data.shares,
+          repost: response.data,
+          type: 'repost'
+        };
+      } else {
+        // Pour le partage simple, incrémenter le compteur
+        const response = await postsService.sharePost(postId);
+        return { 
+          id: postId, 
+          shares: response.data.shares,
+          type: 'share'
+        };
+      }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors du partage du post');
     }
@@ -309,13 +331,21 @@ const postsSlice = createSlice({
       
       // sharePost
       .addCase(sharePost.fulfilled, (state, action) => {
-        const { id, shares } = action.payload;
+        const { id, shares, repost, type } = action.payload;
         const post = state.posts.find(p => p._id === id);
         if (post) {
-          post.shares = shares;
+          if (type === 'repost') {
+            post.reposts = repost;
+          } else {
+            post.shares = shares;
+          }
         }
         if (state.currentPost && state.currentPost._id === id) {
-          state.currentPost.shares = shares;
+          if (type === 'repost') {
+            state.currentPost.reposts = repost;
+          } else {
+            state.currentPost.shares = shares;
+          }
         }
       })
       

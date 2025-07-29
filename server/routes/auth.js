@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { validateGuineanLocation } = require('../middleware/geographicValidation');
 const User = require('../models/User'); // Added missing import for User model
 const bcrypt = require('bcryptjs'); // Added missing import for bcrypt
+const auth = require('../middleware/auth'); // Added missing import for auth middleware
 
 const router = express.Router();
 
@@ -250,10 +251,10 @@ router.post('/login', [
 // @route   PUT /api/auth/profile/picture
 // @desc    Mettre à jour la photo de profil
 // @access  Private
-router.put('/profile/picture', async (req, res) => {
+router.put('/profile/picture', auth, async (req, res) => {
   try {
-    // En mode développement, simuler l'upload
-    const mockImageUrl = `https://via.placeholder.com/200x200/4CAF50/FFFFFF?text=${req.user.firstName?.charAt(0) || 'U'}`;
+    // En mode développement, simuler l'upload avec une image locale
+    const mockImageUrl = `/api/static/avatars/${req.user.firstName?.charAt(0) || 'U'}.jpg`;
     
     res.json({
       success: true,
@@ -287,6 +288,7 @@ router.get('/me', (req, res) => {
       quartier: '',
       role: 'user',
       isVerified: true,
+      profilePicture: `/api/static/avatars/U.jpg`,
       createdAt: new Date(),
       getPublicProfile: function() {
         return {
@@ -302,6 +304,7 @@ router.get('/me', (req, res) => {
           quartier: this.quartier,
           role: this.role,
           isVerified: this.isVerified,
+          profilePicture: this.profilePicture,
           createdAt: this.createdAt
         };
       }

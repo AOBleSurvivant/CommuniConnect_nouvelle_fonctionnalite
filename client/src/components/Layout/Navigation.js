@@ -288,13 +288,14 @@ const Navigation = () => {
                   sx={{ ml: 1 }}
                 >
                   <Avatar
+                    src={user?.profilePicture}
                     sx={{ 
                       width: 32, 
                       height: 32,
                       bgcolor: theme.palette.primary.main,
                     }}
                   >
-                    {user?.name?.charAt(0) || 'U'}
+                    {user?.firstName?.charAt(0) || user?.name?.charAt(0) || 'U'}
                   </Avatar>
                 </IconButton>
               </Tooltip>

@@ -10,6 +10,7 @@ const NotificationService = require('./services/notificationService');
 const MessageSocketService = require('./services/messageSocketService');
 const PushNotificationService = require('./services/pushNotificationService');
 require('dotenv').config();
+const path = require('path'); // Added for serving static files
 
 const app = express();
 const server = http.createServer(app);
@@ -49,13 +50,23 @@ app.use(helmet({
 app.use(compression());
 app.use(morgan('combined'));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limite chaque IP à 100 requêtes par fenêtre
-  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
-});
-app.use('/api/', limiter);
+// Rate limiting - Désactivé en mode développement
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limite chaque IP à 100 requêtes par fenêtre
+    message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Ignorer le rate limiting pour les routes de santé et de test
+      return req.path === '/api/health' || req.path.startsWith('/api/test');
+    }
+  });
+  app.use('/api/', limiter);
+} else {
+  console.log('🔓 Rate limiting désactivé en mode développement');
+}
 
 // CORS pour Express
 app.use(cors({
@@ -98,6 +109,9 @@ app.use('/api/locations', require('./routes/locations'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/stats', require('./routes/stats'));
+
+// Route pour servir les images statiques
+app.use('/api/static/avatars', express.static(path.join(__dirname, 'static/avatars')));
 
 // Route de test
 app.get('/api/health', (req, res) => {
