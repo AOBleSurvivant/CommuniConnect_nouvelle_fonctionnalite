@@ -29,7 +29,7 @@ import {
   MicOff as MicOffIcon,
   ScreenShare as ScreenShareIcon,
   Settings as SettingsIcon,
-  FlipCamera as FlipCameraIcon
+  FlipCameraIos as FlipCameraIcon
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -330,10 +330,6 @@ const LivestreamPlayer = ({ livestream, onClose }) => {
     }
     setIsMicOn(!isMicOn);
   };
-
-  // États pour gérer les streams
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Vérifier la cohérence des états
   const validateStates = () => {
