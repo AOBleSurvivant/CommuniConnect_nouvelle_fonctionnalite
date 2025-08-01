@@ -9,6 +9,7 @@ import {
   Avatar,
   IconButton,
   Badge,
+  Button,
   useTheme
 } from '@mui/material';
 import {
@@ -27,12 +28,14 @@ import {
   Chat as ChatIcon,
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
-  Report as ReportIcon
+  Report as ReportIcon,
+  PlayArrow as PlayIcon,
+  Stop as StopIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const LivestreamCard = ({ livestream, onClick, onLike, onReport }) => {
+const LivestreamCard = ({ livestream, onClick, onLike, onReport, onStart, onJoin }) => {
   const theme = useTheme();
 
   const getTypeIcon = (type) => {
@@ -128,74 +131,84 @@ const LivestreamCard = ({ livestream, onClick, onLike, onReport }) => {
   const getStatusLabel = (status) => {
     switch (status) {
       case 'live':
-        return 'En direct';
+        return 'EN DIRECT';
       case 'scheduled':
-        return 'Programmé';
+        return 'PROGRAMMÉ';
       case 'ended':
-        return 'Terminé';
+        return 'TERMINÉ';
       default:
-        return 'Inconnu';
+        return 'INCONNU';
     }
   };
 
   const formatTime = (date) => {
     if (!date) return '';
-    return formatDistanceToNow(new Date(date), { 
-      addSuffix: true, 
-      locale: fr 
-    });
+    try {
+      return formatDistanceToNow(new Date(date), { addSuffix: true, locale: fr });
+    } catch (error) {
+      return 'Récemment';
+    }
   };
 
   const getLocationText = () => {
-    const { location } = livestream;
-    if (!location) return '';
+    const location = livestream.location;
+    if (!location) return 'Localisation non spécifiée';
     
     const parts = [];
     if (location.quartier) parts.push(location.quartier);
     if (location.commune) parts.push(location.commune);
+    if (location.prefecture) parts.push(location.prefecture);
     
-    return parts.join(', ');
+    return parts.length > 0 ? parts.join(', ') : 'Localisation non spécifiée';
   };
 
   const getViewerCount = () => {
-    return livestream.stats?.currentViewers || livestream.viewers?.length || 0;
+    return livestream.stats?.currentViewers || livestream.viewers || 0;
   };
 
   const getMessageCount = () => {
-    return livestream.stats?.totalMessages || livestream.messages?.length || 0;
+    return livestream.stats?.totalMessages || 0;
   };
 
   const getReactionCount = () => {
-    return livestream.reactions?.length || 0;
+    return livestream.stats?.totalReactions || 0;
   };
 
   const isLiked = () => {
-    // Vérifier si l'utilisateur actuel a liké ce live
-    // Cette logique devrait être basée sur l'état Redux
-    return false;
+    return livestream.isLiked || false;
+  };
+
+  const handleStartLivestream = (e) => {
+    e.stopPropagation();
+    onStart && onStart(livestream);
+  };
+
+  const handleJoinLivestream = (e) => {
+    e.stopPropagation();
+    onJoin && onJoin(livestream);
   };
 
   return (
     <Card 
       sx={{ 
-        height: '100%',
-        display: 'flex',
+        height: '100%', 
+        display: 'flex', 
         flexDirection: 'column',
         cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
+        transition: 'transform 0.2s, box-shadow 0.2s',
         '&:hover': {
           transform: 'translateY(-2px)',
-          boxShadow: theme.shadows[8],
+          boxShadow: theme.shadows[8]
         }
       }}
       onClick={onClick}
     >
-      {/* Image de couverture ou placeholder */}
+      {/* Image de couverture */}
       <CardMedia
         component="div"
         sx={{
-          height: 140,
-          backgroundColor: livestream.status === 'live' ? 'error.main' : 'grey.200',
+          height: 200,
+          backgroundColor: livestream.status === 'live' ? 'error.main' : 'grey.300',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -309,21 +322,56 @@ const LivestreamCard = ({ livestream, onClick, onLike, onReport }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Avatar 
             sx={{ width: 24, height: 24, mr: 1 }}
-            src={livestream.author?.avatar}
+            src={livestream.streamer?.profilePicture || livestream.author?.avatar}
           >
             <PersonIcon sx={{ fontSize: 16 }} />
           </Avatar>
           <Typography variant="caption" color="text.secondary">
-            {livestream.author?.firstName} {livestream.author?.lastName}
+            {livestream.streamer?.name || `${livestream.author?.firstName} ${livestream.author?.lastName}`}
           </Typography>
+        </Box>
+
+        {/* Actions principales */}
+        <Box sx={{ mt: 'auto', mb: 2 }}>
+          {livestream.status === 'live' ? (
+            <Button
+              fullWidth
+              variant="contained"
+              color="error"
+              startIcon={<PlayIcon />}
+              onClick={handleJoinLivestream}
+              size="small"
+            >
+              Rejoindre le live
+            </Button>
+          ) : livestream.status === 'scheduled' ? (
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              startIcon={<PlayIcon />}
+              onClick={handleStartLivestream}
+              size="small"
+            >
+              Démarrer le live
+            </Button>
+          ) : (
+            <Button
+              fullWidth
+              variant="outlined"
+              disabled
+              size="small"
+            >
+              Live terminé
+            </Button>
+          )}
         </Box>
 
         {/* Statistiques */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
-          alignItems: 'center',
-          mt: 'auto'
+          alignItems: 'center'
         }}>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Badge badgeContent={getViewerCount()} color="primary" max={999}>
@@ -334,13 +382,13 @@ const LivestreamCard = ({ livestream, onClick, onLike, onReport }) => {
             </Badge>
           </Box>
 
-          {/* Actions */}
+          {/* Actions secondaires */}
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <IconButton 
               size="small" 
               onClick={(e) => {
                 e.stopPropagation();
-                onLike && onLike(livestream._id);
+                onLike && onLike(livestream._id || livestream.id);
               }}
               color={isLiked() ? 'error' : 'default'}
             >
@@ -350,7 +398,7 @@ const LivestreamCard = ({ livestream, onClick, onLike, onReport }) => {
               size="small"
               onClick={(e) => {
                 e.stopPropagation();
-                onReport && onReport(livestream._id);
+                onReport && onReport(livestream._id || livestream.id);
               }}
             >
               <ReportIcon fontSize="small" />

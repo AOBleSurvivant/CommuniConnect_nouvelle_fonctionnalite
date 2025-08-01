@@ -28,17 +28,18 @@ const CreateAlertForm = ({ onSubmit, loading = false }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: '',
-    severity: 'medium',
-    location: '',
+    type: 'urgence',
+    urgency: 'medium',
+    visibility: 'quartier',
+    scheduledAt: '',
+    // Correction: initialiser avec des valeurs vides pour éviter les erreurs MUI
     region: '',
     prefecture: '',
     commune: '',
     quartier: '',
     address: '',
     latitude: '',
-    longitude: '',
-    image: ''
+    longitude: ''
   });
 
   const [errors, setErrors] = useState({});

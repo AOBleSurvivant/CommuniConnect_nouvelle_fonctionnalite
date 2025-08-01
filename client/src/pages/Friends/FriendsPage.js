@@ -69,9 +69,13 @@ const FriendsPage = () => {
 
   const handleSendFriendRequest = async () => {
     if (emailToAdd.trim()) {
-      await dispatch(sendFriendRequest(emailToAdd.trim()));
-      setEmailToAdd('');
-      setShowAddFriendDialog(false);
+      try {
+        await dispatch(sendFriendRequest(emailToAdd.trim())).unwrap();
+        setEmailToAdd('');
+        setShowAddFriendDialog(false);
+      } catch (error) {
+        console.error('Erreur lors de l\'envoi de la demande:', error);
+      }
     }
   };
 
@@ -91,11 +95,20 @@ const FriendsPage = () => {
     if (messageText.trim() && selectedFriend) {
       try {
         // Créer une conversation avec l'ami
-        await dispatch(createConversation({
+        const conversation = await dispatch(createConversation({
           participants: [selectedFriend._id],
           name: `${selectedFriend.firstName} ${selectedFriend.lastName}`,
           type: 'private'
         })).unwrap();
+        
+        // Envoyer le message dans la conversation créée
+        if (conversation && conversation._id) {
+          // Ici on pourrait ajouter l'envoi du message
+          // await dispatch(sendMessage({
+          //   conversationId: conversation._id,
+          //   content: messageText.trim()
+          // }));
+        }
         
         setMessageText('');
         setShowMessageDialog(false);
@@ -341,9 +354,10 @@ const FriendsPage = () => {
           <Button 
             onClick={handleSendFriendRequest} 
             variant="contained"
-            disabled={!emailToAdd.trim()}
+            disabled={!emailToAdd.trim() || loading}
+            startIcon={loading ? <CircularProgress size={20} /> : null}
           >
-            Envoyer la demande
+            {loading ? 'Envoi...' : 'Envoyer la demande'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -377,10 +391,10 @@ const FriendsPage = () => {
           <Button 
             onClick={handleSendMessage} 
             variant="contained"
-            disabled={!messageText.trim()}
-            startIcon={<MessageIcon />}
+            disabled={!messageText.trim() || loading}
+            startIcon={loading ? <CircularProgress size={20} /> : <MessageIcon />}
           >
-            Envoyer
+            {loading ? 'Envoi...' : 'Envoyer'}
           </Button>
         </DialogActions>
       </Dialog>

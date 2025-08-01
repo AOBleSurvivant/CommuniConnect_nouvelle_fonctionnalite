@@ -1,1071 +1,372 @@
 const express = require('express');
-const { body, validationResult, query } = require('express-validator');
-const auth = require('../middleware/auth');
-const { validateGuineanLocation } = require('../middleware/geographicValidation');
-const LiveStream = require('../models/LiveStream');
-
 const router = express.Router();
+const devAuth = require('../middleware/devAuth');
 
-// @route   GET /api/livestreams
-// @desc    Obtenir les lives de la communauté locale
-// @access  Public
-router.get('/', [
-  query('type').optional().isIn(['alert', 'event', 'meeting', 'sensitization', 'community']),
-  query('urgency').optional().isIn(['low', 'medium', 'high', 'critical']),
-  query('quartier').optional().isString(),
-  query('commune').optional().isString()
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
+// Appliquer le middleware d'authentification de développement
+router.use(devAuth);
 
-    const { type, urgency, quartier, commune } = req.query;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - données fictives communautaires
-      const mockLiveStreams = [
-        {
-          _id: '507f1f77bcf86cd799439041',
-          type: 'alert',
-          title: 'Incendie dans le quartier Centre',
-          description: 'Incendie signalé rue principale, pompiers en route',
+// Mock data pour les livestreams
+const mockLivestreams = [
+  {
+    id: 1,
+    title: 'Live communautaire Labé',
+    description: 'Discussion sur les événements locaux',
           status: 'live',
-          urgency: 'critical',
-          startedAt: new Date(Date.now() - 10 * 60 * 1000), // Il y a 10 minutes
+    streamer: {
+      id: 1,
+      name: 'Mamadou Diallo',
+      profilePicture: '/api/static/avatars/A.jpg'
+    },
           location: {
-            region: 'Conakry',
-            prefecture: 'Conakry',
-            commune: 'Kaloum',
-            quartier: 'Centre'
-          },
-          visibility: 'quartier',
-          author: {
-            _id: '507f1f77bcf86cd799439042',
-            firstName: 'Mamadou',
-            lastName: 'Diallo',
-            profilePicture: null,
-            isVerified: true
-          },
-          stats: {
-            currentViewers: 23,
-            totalViewers: 45,
-            totalMessages: 12
-          },
-          viewers: [],
-          messages: [
-            {
-              _id: '507f1f77bcf86cd799439043',
-              user: {
-                _id: '507f1f77bcf86cd799439044',
-                firstName: 'Fatou',
-                lastName: 'Camara',
-                profilePicture: null
-              },
-              message: 'Les pompiers arrivent dans 5 minutes',
-              timestamp: new Date(Date.now() - 2 * 60 * 1000)
-            }
-          ],
-          reactions: [],
-          createdAt: new Date(Date.now() - 10 * 60 * 1000),
-          updatedAt: new Date()
-        },
-        {
-          _id: '507f1f77bcf86cd799439045',
-          type: 'meeting',
-          title: 'Réunion de quartier - Propreté',
-          description: 'Réunion mensuelle pour discuter de la propreté du quartier',
-          status: 'live',
-          urgency: 'low',
-          startedAt: new Date(Date.now() - 30 * 60 * 1000), // Il y a 30 minutes
+      prefecture: 'Labé',
+      commune: 'Labé-Centre',
+      quartier: 'Porel'
+    },
+    viewers: 45,
+    startedAt: new Date(Date.now() - 30 * 60 * 1000), // Il y a 30 minutes
+    tags: ['communauté', 'local']
+  },
+  {
+    id: 2,
+    title: 'Actualités de la région',
+    description: 'Les dernières nouvelles de Labé',
+    status: 'scheduled',
+    streamer: {
+      id: 2,
+      name: 'Fatoumata Bah',
+      profilePicture: '/api/static/avatars/F.jpg'
+    },
           location: {
-            region: 'Conakry',
-            prefecture: 'Conakry',
-            commune: 'Kaloum',
-            quartier: 'Centre'
-          },
-          visibility: 'quartier',
-          author: {
-            _id: '507f1f77bcf86cd799439046',
-            firstName: 'Ibrahima',
-            lastName: 'Sow',
-            profilePicture: null,
-            isVerified: true
-          },
-          stats: {
-            currentViewers: 15,
-            totalViewers: 28,
-            totalMessages: 8
-          },
-          viewers: [],
-          messages: [],
-          reactions: [],
-          createdAt: new Date(Date.now() - 30 * 60 * 1000),
-          updatedAt: new Date()
-        }
-      ];
-
-      // Filtrer selon les critères
-      let filteredStreams = mockLiveStreams.filter(stream => {
-        if (type && stream.type !== type) return false;
-        if (urgency && stream.urgency !== urgency) return false;
-        if (quartier && stream.location.quartier !== quartier) return false;
-        if (commune && stream.location.commune !== commune) return false;
-        return true;
-      });
-
-      res.json({
-        success: true,
-        data: filteredStreams
-      });
-      return;
-    }
-
-    // Construire la requête
-    let query = {
-      status: 'live',
-      'moderation.isReported': false
-    };
-
-    // Filtres
-    if (type) query.type = type;
-    if (urgency) query.urgency = urgency;
-    if (quartier) query['location.quartier'] = quartier;
-    if (commune) query['location.commune'] = commune;
-
-    const streams = await LiveStream.find(query)
-      .populate('author', 'firstName lastName profilePicture isVerified')
-      .populate('viewers.user', 'firstName lastName profilePicture')
-      .populate('messages.user', 'firstName lastName profilePicture')
-      .sort({ urgency: -1, startedAt: -1 })
-      .limit(20);
-
-    res.json({
-      success: true,
-      data: streams
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la récupération des lives:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des lives'
-    });
+      prefecture: 'Labé',
+      commune: 'Labé-Centre',
+      quartier: 'Centre-ville'
+    },
+    scheduledFor: new Date(Date.now() + 2 * 60 * 60 * 1000), // Dans 2 heures
+    tags: ['actualités', 'région']
   }
-});
+];
 
-// @route   GET /api/livestreams/alerts
-// @desc    Obtenir les alertes en direct
-// @access  Public
-router.get('/alerts', async (req, res) => {
-  try {
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - alertes fictives
       const mockAlerts = [
         {
-          _id: '507f1f77bcf86cd799439041',
-          type: 'alert',
-          title: 'Incendie dans le quartier Centre',
-          description: 'Incendie signalé rue principale, pompiers en route',
-          status: 'live',
-          urgency: 'critical',
-          startedAt: new Date(Date.now() - 10 * 60 * 1000),
+    id: 1,
+    type: 'urgent',
+    message: 'Alerte météo - Fortes pluies attendues',
           location: {
-            region: 'Conakry',
-            prefecture: 'Conakry',
-            commune: 'Kaloum',
-            quartier: 'Centre'
-          },
-          visibility: 'quartier',
-          author: {
-            _id: '507f1f77bcf86cd799439042',
-            firstName: 'Mamadou',
-            lastName: 'Diallo',
-            profilePicture: null,
-            isVerified: true
-          },
-          stats: {
-            currentViewers: 23,
-            totalViewers: 45,
-            totalMessages: 12
-          },
-          createdAt: new Date(Date.now() - 10 * 60 * 1000),
-          updatedAt: new Date()
-        }
-      ];
+      prefecture: 'Labé',
+      commune: 'Labé-Centre',
+      quartier: 'Porel'
+    },
+    createdAt: new Date(Date.now() - 15 * 60 * 1000), // Il y a 15 minutes
+    priority: 'high'
+  },
+  {
+    id: 2,
+    type: 'info',
+    message: 'Réunion communautaire ce soir',
+    location: {
+      prefecture: 'Labé',
+      commune: 'Labé-Centre',
+      quartier: 'Centre-ville'
+    },
+    createdAt: new Date(Date.now() - 45 * 60 * 1000), // Il y a 45 minutes
+    priority: 'medium'
+  }
+];
 
-      res.json({
-        success: true,
-        data: mockAlerts
-      });
-      return;
-    }
-
-    const alerts = await LiveStream.getAlerts();
+// GET /api/livestreams - Liste des livestreams avec filtres
+router.get('/', (req, res) => {
+  console.log('📺 GET /api/livestreams - Liste des livestreams');
+  
+  const { type, urgency, quartier, commune, prefecture } = req.query;
+  
+  let filteredLivestreams = [...mockLivestreams];
+  
+  // Filtrage par type
+  if (type) {
+    filteredLivestreams = filteredLivestreams.filter(ls => ls.status === type);
+  }
+  
+  // Filtrage par localisation
+  if (prefecture) {
+    filteredLivestreams = filteredLivestreams.filter(ls => 
+      ls.location.prefecture === prefecture
+    );
+  }
+  
+  if (commune) {
+    filteredLivestreams = filteredLivestreams.filter(ls => 
+      ls.location.commune === commune
+    );
+  }
+  
+  if (quartier) {
+    filteredLivestreams = filteredLivestreams.filter(ls => 
+      ls.location.quartier === quartier
+    );
+  }
 
     res.json({
       success: true,
-      data: alerts
+      livestreams: filteredLivestreams,
+      total: filteredLivestreams.length
     });
-
-  } catch (error) {
-    console.error('Erreur lors de la récupération des alertes:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des alertes'
-    });
-  }
 });
 
-// @route   GET /api/livestreams/live
-// @desc    Obtenir les lives en direct
-// @access  Public
-router.get('/live', async (req, res) => {
-  try {
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - lives en direct fictifs
-      const mockLiveStreams = [
-        {
-          _id: '507f1f77bcf86cd799439041',
-          type: 'alert',
-          title: 'Incendie dans le quartier Centre',
-          description: 'Incendie signalé rue principale, pompiers en route',
-          status: 'live',
-          urgency: 'critical',
-          startedAt: new Date(Date.now() - 10 * 60 * 1000),
-          location: {
-            region: 'Conakry',
-            prefecture: 'Conakry',
-            commune: 'Kaloum',
-            quartier: 'Centre'
-          },
-          visibility: 'quartier',
-          author: {
-            _id: '507f1f77bcf86cd799439042',
-            firstName: 'Mamadou',
-            lastName: 'Diallo',
-            profilePicture: null,
-            isVerified: true
-          },
-          stats: {
-            currentViewers: 23,
-            totalViewers: 45,
-            totalMessages: 12
-          },
-          createdAt: new Date(Date.now() - 10 * 60 * 1000),
-          updatedAt: new Date()
-        }
-      ];
+// GET /api/livestreams/live - Livestreams en direct
+router.get('/live', (req, res) => {
+  console.log('📺 GET /api/livestreams/live - Lives en direct');
+  
+  const liveStreams = mockLivestreams.filter(ls => ls.status === 'live');
 
       res.json({
         success: true,
-        data: mockLiveStreams
+        livestreams: liveStreams,
+        total: liveStreams.length
       });
-      return;
-    }
+});
 
-    const liveStreams = await LiveStream.getLiveStreams();
+// GET /api/livestreams/scheduled - Livestreams programmés
+router.get('/scheduled', (req, res) => {
+  console.log('📺 GET /api/livestreams/scheduled - Lives programmés');
+  
+  const scheduledStreams = mockLivestreams.filter(ls => ls.status === 'scheduled');
 
     res.json({
       success: true,
-      data: liveStreams
+      livestreams: scheduledStreams,
+      total: scheduledStreams.length
     });
-
-  } catch (error) {
-    console.error('Erreur lors de la récupération des lives en direct:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des lives en direct'
-    });
-  }
 });
 
-// @route   GET /api/livestreams/scheduled
-// @desc    Obtenir les lives programmés
-// @access  Public
-router.get('/scheduled', async (req, res) => {
-  try {
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - lives programmés fictifs
-      const mockScheduledStreams = [
-        {
-          _id: '507f1f77bcf86cd799439047',
-          type: 'meeting',
-          title: 'Réunion de quartier - Sécurité',
-          description: 'Réunion pour discuter de la sécurité du quartier',
-          status: 'scheduled',
-          urgency: 'medium',
-          scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // Dans 2 heures
-          location: {
-            region: 'Conakry',
-            prefecture: 'Conakry',
-            commune: 'Kaloum',
-            quartier: 'Centre'
-          },
-          visibility: 'quartier',
-          author: {
-            _id: '507f1f77bcf86cd799439048',
-            firstName: 'Fatou',
-            lastName: 'Camara',
-            profilePicture: null,
-            isVerified: true
-          },
-          stats: {
-            currentViewers: 0,
-            totalViewers: 0,
-            totalMessages: 0
-          },
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Il y a 1 jour
-          updatedAt: new Date()
-        }
-      ];
-
-      res.json({
-        success: true,
-        data: mockScheduledStreams
-      });
-      return;
-    }
-
-    const scheduledStreams = await LiveStream.find({ status: 'scheduled' })
-      .populate('author', 'firstName lastName profilePicture isVerified')
-      .sort({ scheduledAt: 1 });
+// GET /api/livestreams/alerts - Alertes
+router.get('/alerts', (req, res) => {
+  console.log('📺 GET /api/livestreams/alerts - Alertes');
+  
+  const { urgency, quartier, commune, prefecture } = req.query;
+  
+  let filteredAlerts = [...mockAlerts];
+  
+  // Filtrage par urgence
+  if (urgency) {
+    filteredAlerts = filteredAlerts.filter(alert => alert.priority === urgency);
+  }
+  
+  // Filtrage par localisation
+  if (prefecture) {
+    filteredAlerts = filteredAlerts.filter(alert => 
+      alert.location.prefecture === prefecture
+    );
+  }
+  
+  if (commune) {
+    filteredAlerts = filteredAlerts.filter(alert => 
+      alert.location.commune === commune
+    );
+  }
+  
+  if (quartier) {
+    filteredAlerts = filteredAlerts.filter(alert => 
+      alert.location.quartier === quartier
+    );
+  }
 
     res.json({
       success: true,
-      data: scheduledStreams
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la récupération des lives programmés:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des lives programmés'
-    });
-  }
+    data: filteredAlerts,
+    total: filteredAlerts.length
+  });
 });
 
-// @route   GET /api/livestreams/community
-// @desc    Obtenir les lives de la communauté locale
-// @access  Public
-router.get('/community', [
-  query('quartier').isString().withMessage('Quartier requis'),
-  query('commune').isString().withMessage('Commune requise')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
-    const { quartier, commune } = req.query;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - lives communautaires fictifs
-      const mockCommunityStreams = [
-        {
-          _id: '507f1f77bcf86cd799439041',
-          type: 'alert',
-          title: 'Incendie dans le quartier Centre',
-          description: 'Incendie signalé rue principale, pompiers en route',
-          status: 'live',
-          urgency: 'critical',
-          startedAt: new Date(Date.now() - 10 * 60 * 1000),
-          location: {
-            region: 'Conakry',
-            prefecture: 'Conakry',
-            commune: 'Kaloum',
-            quartier: 'Centre'
-          },
-          visibility: 'quartier',
-          author: {
-            _id: '507f1f77bcf86cd799439042',
-            firstName: 'Mamadou',
-            lastName: 'Diallo',
-            profilePicture: null,
-            isVerified: true
-          },
-          stats: {
-            currentViewers: 23,
-            totalViewers: 45,
-            totalMessages: 12
-          },
-          createdAt: new Date(Date.now() - 10 * 60 * 1000),
-          updatedAt: new Date()
-        }
-      ];
+// GET /api/livestreams/community - Livestreams par communauté
+router.get('/community', (req, res) => {
+  console.log('📺 GET /api/livestreams/community - Lives par communauté');
+  
+  const { quartier, commune, prefecture } = req.query;
+  
+  let filteredLivestreams = [...mockLivestreams];
+  
+  // Filtrage par localisation
+  if (prefecture) {
+    filteredLivestreams = filteredLivestreams.filter(ls => 
+      ls.location.prefecture === prefecture
+    );
+  }
+  
+  if (commune) {
+    filteredLivestreams = filteredLivestreams.filter(ls => 
+      ls.location.commune === commune
+    );
+  }
+  
+  if (quartier) {
+    filteredLivestreams = filteredLivestreams.filter(ls => 
+      ls.location.quartier === quartier
+    );
+  }
 
       res.json({
         success: true,
-        data: mockCommunityStreams
-      });
-      return;
-    }
-
-    const streams = await LiveStream.getCommunityStreams(quartier, commune);
-
-    res.json({
-      success: true,
-      data: streams
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la récupération des lives communautaires:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des lives communautaires'
-    });
-  }
+    data: filteredLivestreams,
+    total: filteredLivestreams.length
+  });
 });
 
-// @route   GET /api/livestreams/:id
-// @desc    Obtenir un live spécifique
-// @access  Public
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - live fictif
-      const mockStream = {
-        _id: id,
-        type: 'alert',
-        title: 'Incendie dans le quartier Centre',
-        description: 'Incendie signalé rue principale, pompiers en route',
-        status: 'live',
-        urgency: 'critical',
-        startedAt: new Date(Date.now() - 10 * 60 * 1000),
-        location: {
-          region: 'Conakry',
-          prefecture: 'Conakry',
-          commune: 'Kaloum',
-          quartier: 'Centre'
-        },
-        visibility: 'quartier',
-        author: {
-          _id: '507f1f77bcf86cd799439042',
-          firstName: 'Mamadou',
-          lastName: 'Diallo',
-          profilePicture: null,
-          isVerified: true
-        },
-        stats: {
-          currentViewers: 23,
-          totalViewers: 45,
-          totalMessages: 12
-        },
-        messages: [
-          {
-            _id: '507f1f77bcf86cd799439043',
-            user: {
-              _id: '507f1f77bcf86cd799439044',
-              firstName: 'Fatou',
-              lastName: 'Camara',
-              profilePicture: null
-            },
-            message: 'Les pompiers arrivent dans 5 minutes',
-            timestamp: new Date(Date.now() - 2 * 60 * 1000)
-          },
-          {
-            _id: '507f1f77bcf86cd799439045',
-            user: {
-              _id: '507f1f77bcf86cd799439046',
-              firstName: 'Ibrahima',
-              lastName: 'Sow',
-              profilePicture: null
-            },
-            message: 'Évitez la rue principale',
-            timestamp: new Date(Date.now() - 1 * 60 * 1000)
-          }
-        ],
-        reactions: [
-          {
-            _id: '507f1f77bcf86cd799439047',
-            user: {
-              _id: '507f1f77bcf86cd799439044',
-              firstName: 'Fatou',
-              lastName: 'Camara'
-            },
-            type: 'alert',
-            timestamp: new Date(Date.now() - 5 * 60 * 1000)
-          }
-        ],
-        createdAt: new Date(Date.now() - 10 * 60 * 1000),
-        updatedAt: new Date()
-      };
-
-      res.json({
-        success: true,
-        data: mockStream
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id)
-      .populate('author', 'firstName lastName profilePicture isVerified')
-      .populate('viewers.user', 'firstName lastName profilePicture')
-      .populate('messages.user', 'firstName lastName profilePicture')
-      .populate('reactions.user', 'firstName lastName profilePicture');
-
-    if (!stream) {
+// GET /api/livestreams/:id - Détails d'un livestream
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  console.log(`📺 GET /api/livestreams/${id} - Détails du live`);
+  
+  const livestream = mockLivestreams.find(ls => ls.id === parseInt(id));
+  
+  if (!livestream) {
       return res.status(404).json({
         success: false,
-        message: 'Live non trouvé'
+      message: 'Livestream non trouvé'
       });
     }
 
     res.json({
       success: true,
-      data: stream
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la récupération du live:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération du live'
-    });
-  }
+    data: livestream
+  });
 });
 
-// POST /api/livestreams - Créer un nouveau livestream (version simplifiée)
-router.post('/', auth, async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      type = 'community',
-      urgency = 'low',
-      isPublic = true,
-      location
-    } = req.body;
-
-    // En mode développement, utiliser des données par défaut
-    const defaultLocation = {
-      region: 'Conakry',
-      prefecture: 'Conakry',
-      commune: 'Kaloum',
-      quartier: 'Centre',
-      coordinates: {
-        latitude: 9.537,
-        longitude: -13.6785
-      }
-    };
+// POST /api/livestreams - Créer un nouveau livestream
+router.post('/', (req, res) => {
+  console.log('📺 POST /api/livestreams - Créer un nouveau live');
+  
+  const { title, description, location, scheduledFor } = req.body;
 
     const newLivestream = {
-      _id: Date.now().toString(),
+    id: mockLivestreams.length + 1,
       title,
       description,
-      type,
-      urgency,
-      status: 'pending',
-      isPublic,
-      location: location || defaultLocation,
-      author: {
-        _id: req.user._id || req.user.id,
-        firstName: req.user.firstName || 'Utilisateur',
-        lastName: req.user.lastName || 'OAuth',
-        profilePicture: null,
-        isVerified: true
-      },
-      stats: {
-        currentViewers: 0,
-        totalViewers: 0,
-        totalMessages: 0
-      },
-      viewers: [],
-      messages: [],
-      reactions: [],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    // En mode développement, simuler l'ajout à une base de données
-    if (process.env.NODE_ENV === 'development') {
-      // Simuler un succès
-      return res.status(201).json({
-        success: true,
-        message: 'Livestream créé avec succès',
-        livestream: newLivestream
-      });
-    }
-
-    // En production, sauvegarder dans MongoDB
-    const livestream = new LiveStream(newLivestream);
-    await livestream.save();
+    status: scheduledFor ? 'scheduled' : 'live',
+    streamer: {
+      id: req.user.id,
+      name: req.user.name,
+      profilePicture: req.user.profilePicture
+    },
+    location,
+    viewers: 0,
+    startedAt: scheduledFor ? null : new Date(),
+    scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
+    tags: []
+  };
+  
+  mockLivestreams.push(newLivestream);
 
     res.status(201).json({
       success: true,
-      message: 'Livestream créé avec succès',
-      livestream
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la création du livestream:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la création du livestream'
-    });
-  }
+    data: newLivestream,
+    message: 'Livestream créé avec succès'
+  });
 });
 
-// @route   POST /api/livestreams/:id/start
-// @desc    Démarrer un live
-// @access  Private (auteur uniquement)
-router.post('/:id/start', auth, async (req, res) => {
-  try {
+// POST /api/livestreams/:id/start - Démarrer un livestream
+router.post('/:id/start', (req, res) => {
     const { id } = req.params;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation de démarrage
-      const mockStream = {
-        _id: id,
-        type: 'alert',
-        title: 'Incendie dans le quartier Centre',
-        description: 'Incendie signalé rue principale, pompiers en route',
-        status: 'live',
-        urgency: 'critical',
-        startedAt: new Date(),
-        location: {
-          region: 'Conakry',
-          prefecture: 'Conakry',
-          commune: 'Kaloum',
-          quartier: 'Centre'
-        },
-        visibility: 'quartier',
-        author: {
-          _id: req.user._id,
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-          profilePicture: req.user.profilePicture,
-          isVerified: req.user.isVerified
-        },
-        stats: {
-          currentViewers: 0,
-          totalViewers: 0,
-          totalMessages: 0
-        },
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      res.json({
-        success: true,
-        message: 'Live démarré avec succès',
-        data: mockStream
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id);
-
-    if (!stream) {
+  console.log(`📺 POST /api/livestreams/${id}/start - Démarrer le live`);
+  
+  const livestream = mockLivestreams.find(ls => ls.id === parseInt(id));
+  
+  if (!livestream) {
       return res.status(404).json({
         success: false,
-        message: 'Live non trouvé'
-      });
-    }
-
-    // Vérifier que l'utilisateur est l'auteur
-    if (stream.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Non autorisé à démarrer ce live'
-      });
-    }
-
-    // Vérifier que le live n'est pas déjà en cours
-    if (stream.status === 'live') {
-      return res.status(400).json({
-        success: false,
-        message: 'Le live est déjà en cours'
-      });
-    }
-
-    await stream.startStream();
+      message: 'Livestream non trouvé'
+    });
+  }
+  
+  livestream.status = 'live';
+  livestream.startedAt = new Date();
 
     res.json({
       success: true,
-      message: 'Live démarré avec succès',
-      data: stream
-    });
-
-  } catch (error) {
-    console.error('Erreur lors du démarrage du live:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors du démarrage du live'
-    });
-  }
+    data: livestream,
+    message: 'Livestream démarré avec succès'
+  });
 });
 
-// @route   POST /api/livestreams/:id/end
-// @desc    Arrêter un live
-// @access  Private (auteur uniquement)
-router.post('/:id/end', auth, async (req, res) => {
-  try {
+// POST /api/livestreams/:id/join - Rejoindre un livestream
+router.post('/:id/join', (req, res) => {
     const { id } = req.params;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation d'arrêt
-      const mockStream = {
-        _id: id,
-        type: 'alert',
-        title: 'Incendie dans le quartier Centre',
-        description: 'Incendie signalé rue principale, pompiers en route',
-        status: 'ended',
-        urgency: 'critical',
-        startedAt: new Date(Date.now() - 30 * 60 * 1000),
-        endedAt: new Date(),
-        location: {
-          region: 'Conakry',
-          prefecture: 'Conakry',
-          commune: 'Kaloum',
-          quartier: 'Centre'
-        },
-        visibility: 'quartier',
-        author: {
-          _id: req.user._id,
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-          profilePicture: req.user.profilePicture,
-          isVerified: req.user.isVerified
-        },
-        stats: {
-          currentViewers: 0,
-          totalViewers: 45,
-          totalMessages: 12
-        },
-        createdAt: new Date(Date.now() - 30 * 60 * 1000),
-        updatedAt: new Date()
-      };
-
-      res.json({
-        success: true,
-        message: 'Live arrêté avec succès',
-        data: mockStream
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id);
-
-    if (!stream) {
+  console.log(`📺 POST /api/livestreams/${id}/join - Rejoindre le live`);
+  
+  const livestream = mockLivestreams.find(ls => ls.id === parseInt(id));
+  
+  if (!livestream) {
       return res.status(404).json({
         success: false,
-        message: 'Live non trouvé'
-      });
-    }
-
-    // Vérifier que l'utilisateur est l'auteur
-    if (stream.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Non autorisé à arrêter ce live'
-      });
-    }
-
-    // Vérifier que le live est en cours
-    if (stream.status !== 'live') {
-      return res.status(400).json({
-        success: false,
-        message: 'Le live n\'est pas en cours'
-      });
-    }
-
-    await stream.endStream();
+      message: 'Livestream non trouvé'
+    });
+  }
+  
+  livestream.viewers += 1;
 
     res.json({
       success: true,
-      message: 'Live arrêté avec succès',
-      data: stream
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de l\'arrêt du live:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de l\'arrêt du live'
-    });
-  }
+    data: { viewers: livestream.viewers },
+    message: 'Vous avez rejoint le livestream'
+  });
 });
 
-// @route   POST /api/livestreams/:id/join
-// @desc    Rejoindre un live comme spectateur
-// @access  Private
-router.post('/:id/join', auth, async (req, res) => {
-  try {
+// POST /api/livestreams/:id/message - Envoyer un message
+router.post('/:id/message', (req, res) => {
     const { id } = req.params;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation de rejoindre
-      res.json({
-        success: true,
-        message: 'Spectateur ajouté avec succès'
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id);
-
-    if (!stream) {
+  const { message } = req.body;
+  console.log(`📺 POST /api/livestreams/${id}/message - Envoyer un message`);
+  
+  const livestream = mockLivestreams.find(ls => ls.id === parseInt(id));
+  
+  if (!livestream) {
       return res.status(404).json({
-        success: false,
-        message: 'Live non trouvé'
-      });
-    }
-
-    // Vérifier que le live est en cours
-    if (stream.status !== 'live') {
-      return res.status(400).json({
-        success: false,
-        message: 'Le live n\'est pas en cours'
-      });
-    }
-
-    await stream.addViewer(req.user._id);
+      success: false,
+      message: 'Livestream non trouvé'
+    });
+  }
 
     res.json({
       success: true,
-      message: 'Spectateur ajouté avec succès'
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de l\'ajout du spectateur:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de l\'ajout du spectateur'
-    });
-  }
-});
-
-// @route   POST /api/livestreams/:id/leave
-// @desc    Quitter un live
-// @access  Private
-router.post('/:id/leave', auth, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation de quitter
-      res.json({
-        success: true,
-        message: 'Spectateur retiré avec succès'
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id);
-
-    if (!stream) {
-      return res.status(404).json({
-        success: false,
-        message: 'Live non trouvé'
-      });
-    }
-
-    await stream.removeViewer(req.user._id);
-
-    res.json({
-      success: true,
-      message: 'Spectateur retiré avec succès'
-    });
-
-  } catch (error) {
-    console.error('Erreur lors du retrait du spectateur:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors du retrait du spectateur'
-    });
-  }
-});
-
-// @route   POST /api/livestreams/:id/message
-// @desc    Envoyer un message dans le chat
-// @access  Private
-router.post('/:id/message', [
-  auth,
-  body('message')
-    .trim()
-    .isLength({ min: 1, max: 150 })
-    .withMessage('Le message doit contenir entre 1 et 150 caractères')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
-    const { id } = req.params;
-    const { message } = req.body;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation de message
-      const mockMessage = {
-        _id: '507f1f77bcf86cd799439051',
+    data: {
+      message,
         user: {
-          _id: req.user._id,
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
+        id: req.user.id,
+        name: req.user.name,
           profilePicture: req.user.profilePicture
         },
-        message,
         timestamp: new Date()
-      };
-
-      res.json({
-        success: true,
-        message: 'Message envoyé avec succès',
-        data: mockMessage
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id);
-
-    if (!stream) {
-      return res.status(404).json({
-        success: false,
-        message: 'Live non trouvé'
-      });
-    }
-
-    // Vérifier que le live est en cours
-    if (stream.status !== 'live') {
-      return res.status(400).json({
-        success: false,
-        message: 'Le live n\'est pas en cours'
-      });
-    }
-
-    // Vérifier que les commentaires sont autorisés
-    if (!stream.settings.allowComments) {
-      return res.status(400).json({
-        success: false,
-        message: 'Les commentaires sont désactivés pour ce live'
-      });
-    }
-
-    await stream.addMessage(req.user._id, message);
-
-    res.json({
-      success: true,
+    },
       message: 'Message envoyé avec succès'
     });
-
-  } catch (error) {
-    console.error('Erreur lors de l\'envoi du message:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de l\'envoi du message'
-    });
-  }
 });
 
-// @route   POST /api/livestreams/:id/reaction
-// @desc    Ajouter une réaction
-// @access  Private
-router.post('/:id/reaction', [
-  auth,
-  body('type')
-    .isIn(['like', 'love', 'alert'])
-    .withMessage('Type de réaction invalide')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
+// POST /api/livestreams/:id/reaction - Réagir à un livestream
+router.post('/:id/reaction', (req, res) => {
     const { id } = req.params;
     const { type } = req.body;
-
-    // Vérifier si MongoDB est disponible
-    if (process.env.NODE_ENV === 'development' && global.mongoConnected === false) {
-      // Mode développement sans MongoDB - simulation de réaction
-      const mockReaction = {
-        _id: '507f1f77bcf86cd799439052',
-        user: {
-          _id: req.user._id,
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-          profilePicture: req.user.profilePicture
-        },
-        type,
-        timestamp: new Date()
-      };
-
-      res.json({
-        success: true,
-        message: 'Réaction ajoutée avec succès',
-        data: mockReaction
-      });
-      return;
-    }
-
-    const stream = await LiveStream.findById(id);
-
-    if (!stream) {
+  console.log(`📺 POST /api/livestreams/${id}/reaction - Réaction ${type}`);
+  
+  const livestream = mockLivestreams.find(ls => ls.id === parseInt(id));
+  
+  if (!livestream) {
       return res.status(404).json({
         success: false,
-        message: 'Live non trouvé'
-      });
-    }
-
-    // Vérifier que le live est en cours
-    if (stream.status !== 'live') {
-      return res.status(400).json({
-        success: false,
-        message: 'Le live n\'est pas en cours'
-      });
-    }
-
-    // Vérifier que les réactions sont autorisées
-    if (!stream.settings.allowReactions) {
-      return res.status(400).json({
-        success: false,
-        message: 'Les réactions sont désactivées pour ce live'
-      });
-    }
-
-    await stream.addReaction(req.user._id, type);
+      message: 'Livestream non trouvé'
+    });
+  }
 
     res.json({
       success: true,
-      message: 'Réaction ajoutée avec succès'
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de l\'ajout de la réaction:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de l\'ajout de la réaction'
-    });
-  }
+    data: {
+      type,
+      user: {
+        id: req.user.id,
+        name: req.user.name
+      },
+      timestamp: new Date()
+    },
+    message: 'Réaction envoyée avec succès'
+  });
 });
 
 module.exports = router; 

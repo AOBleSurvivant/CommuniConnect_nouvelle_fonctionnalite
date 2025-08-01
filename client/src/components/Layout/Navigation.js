@@ -47,7 +47,7 @@ import NotificationCenter from '../common/NotificationCenter';
 
 const Navigation = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -98,23 +98,23 @@ const Navigation = () => {
       text: 'Demandes d\'aide', 
       icon: <Help />, 
       path: '/help',
-      description: 'Demandes d\'assistance'
+      description: 'Demandes d\'aide et support'
     },
     { 
       text: 'Carte', 
       icon: <Map />, 
       path: '/map',
-      description: 'Carte interactive'
+      description: 'Carte interactive de la communauté'
     },
     { 
       text: 'Messages', 
       icon: <Chat />, 
       path: '/messages',
-      description: 'Messagerie privée et groupes'
+      description: 'Messagerie privée'
     },
   ];
 
-  // Ajouter le menu de modération pour les modérateurs et admins
+  // Ajouter les éléments de modération si l'utilisateur est modérateur
   if (user?.role === 'moderator' || user?.role === 'admin') {
     menuItems.push({
       text: 'Modération',
@@ -143,10 +143,10 @@ const Navigation = () => {
   };
 
   const handleNavigation = (path) => {
-    navigate(path);
     if (isMobile) {
       setDrawerOpen(false);
     }
+    navigate(path);
   };
 
   const isActiveRoute = (path) => {
@@ -221,18 +221,31 @@ const Navigation = () => {
       >
         <Container maxWidth="xl">
           <Toolbar sx={{ px: { xs: 1, sm: 2 } }}>
-            {/* Logo et titre */}
-            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-              <IconButton
-                color="inherit"
-                aria-label="open drawer"
-                edge="start"
-                onClick={handleDrawerToggle}
-                sx={{ mr: 2, display: { md: 'none' } }}
-              >
-                <MenuIcon />
-              </IconButton>
-              
+            {/* Menu hamburger (mobile seulement) */}
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ 
+                display: { lg: 'none' },
+                color: theme.palette.primary.main,
+                position: 'absolute',
+                left: { xs: 8, sm: 16 },
+                zIndex: 1,
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
+            
+            {/* Logo - centré sur mobile, à gauche sur desktop */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              justifyContent: { xs: 'center', lg: 'flex-start' },
+              flexGrow: 1,
+              position: 'relative',
+            }}>
               <Typography
                 variant="h6"
                 noWrap
@@ -241,6 +254,8 @@ const Navigation = () => {
                   fontWeight: 700,
                   color: theme.palette.primary.main,
                   cursor: 'pointer',
+                  fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                  textAlign: { xs: 'center', lg: 'left' },
                 }}
                 onClick={() => navigate('/')}
               >
@@ -248,9 +263,16 @@ const Navigation = () => {
               </Typography>
             </Box>
 
-            {/* Navigation desktop */}
+            {/* Navigation desktop (centre) */}
             {!isMobile && (
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1, 
+                flexWrap: 'wrap',
+                flexGrow: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
                 {menuItems.map((item) => (
                   <Tooltip key={item.text} title={item.description} arrow>
                     <Button
@@ -267,6 +289,7 @@ const Navigation = () => {
                         fontSize: '0.875rem',
                         px: 1.5,
                         py: 0.5,
+                        minWidth: 'auto',
                       }}
                     >
                       {item.text}
@@ -276,8 +299,15 @@ const Navigation = () => {
               </Box>
             )}
 
-            {/* Actions utilisateur */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Actions utilisateur (droite) */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              position: 'absolute',
+              right: { xs: 8, sm: 16 },
+              zIndex: 1,
+            }}>
               {/* Centre de notifications */}
               <NotificationCenter />
 
@@ -313,7 +343,7 @@ const Navigation = () => {
           keepMounted: true, // Better open performance on mobile.
         }}
         sx={{
-          display: { xs: 'block', md: 'none' },
+          display: { xs: 'block', lg: 'none' },
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
             width: 280,

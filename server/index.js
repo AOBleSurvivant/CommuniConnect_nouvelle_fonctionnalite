@@ -6,11 +6,39 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const socketIo = require('socket.io');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./swagger');
 const NotificationService = require('./services/notificationService');
 const MessageSocketService = require('./services/messageSocketService');
 const PushNotificationService = require('./services/pushNotificationService');
+const multer = require('multer');
 require('dotenv').config();
 const path = require('path'); // Added for serving static files
+
+// Configuration multer pour l'upload de fichiers
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'static/avatars/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seules les images sont autorisées'), false);
+    }
+  }
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -78,6 +106,15 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Servir les fichiers statiques
+app.use('/api/static', express.static(path.join(__dirname, 'static')));
+
+// Créer le dossier avatars s'il n'existe pas
+const avatarsDir = path.join(__dirname, 'static/avatars');
+if (!require('fs').existsSync(avatarsDir)) {
+  require('fs').mkdirSync(avatarsDir, { recursive: true });
+}
+
 // Connexion à MongoDB (optionnelle en mode développement)
 const connectToMongoDB = async () => {
   try {
@@ -94,6 +131,12 @@ const connectToMongoDB = async () => {
     return false;
   }
 };
+
+// Documentation API Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'CommuniConnect API Documentation'
+}));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -113,7 +156,32 @@ app.use('/api/stats', require('./routes/stats'));
 // Route pour servir les images statiques
 app.use('/api/static/avatars', express.static(path.join(__dirname, 'static/avatars')));
 
-// Route de test
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Vérifier l'état de l'API
+ *     description: Endpoint pour vérifier que l'API CommuniConnect fonctionne correctement
+ *     tags: [Système]
+ *     responses:
+ *       200:
+ *         description: API opérationnelle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "OK"
+ *                 message:
+ *                   type: string
+ *                   example: "CommuniConnect API fonctionne correctement"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-01-29T22:00:00.000Z"
+ */
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 

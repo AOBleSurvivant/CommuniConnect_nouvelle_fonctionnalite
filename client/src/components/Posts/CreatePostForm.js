@@ -38,16 +38,29 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
   const { loading, error, success } = useSelector(state => state.posts);
 
   const [formData, setFormData] = useState({
+    title: '',
     content: '',
-    type: 'community',
+    type: 'general',
+    category: 'communautaire',
+    isPublic: true,
+    allowComments: true,
+    allowReactions: true,
+    // Correction: initialiser avec des valeurs vides pour éviter les erreurs MUI
     region: '',
     prefecture: '',
     commune: '',
     quartier: '',
-    address: '',
-    latitude: '',
-    longitude: '',
-    isPublic: true
+    location: {
+      region: '',
+      prefecture: '',
+      commune: '',
+      quartier: '',
+      address: '',
+      coordinates: {
+        latitude: 9.537,
+        longitude: -13.6785
+      }
+    }
   });
 
   const [mediaFiles, setMediaFiles] = useState([]);
@@ -56,8 +69,13 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
   useEffect(() => {
     if (editPost) {
       setFormData({
+        title: editPost.title || '',
         content: editPost.content,
         type: editPost.type,
+        category: editPost.category || 'communautaire',
+        isPublic: editPost.isPublic,
+        allowComments: editPost.allowComments,
+        allowReactions: editPost.allowReactions,
         region: editPost.location?.region || '',
         prefecture: editPost.location?.prefecture || '',
         commune: editPost.location?.commune || '',
@@ -65,13 +83,28 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
         address: editPost.location?.address || '',
         latitude: editPost.location?.coordinates?.latitude || '',
         longitude: editPost.location?.coordinates?.longitude || '',
-        isPublic: editPost.isPublic
+        location: {
+          region: editPost.location?.region || '',
+          prefecture: editPost.location?.prefecture || '',
+          commune: editPost.location?.commune || '',
+          quartier: editPost.location?.quartier || '',
+          address: editPost.location?.address || '',
+          coordinates: {
+            latitude: editPost.location?.coordinates?.latitude || '',
+            longitude: editPost.location?.coordinates?.longitude || ''
+          }
+        }
       });
       setMediaFiles(editPost.media || []);
     } else {
       setFormData({
+        title: '',
         content: '',
-        type: 'community',
+        type: 'general',
+        category: 'communautaire',
+        isPublic: true,
+        allowComments: true,
+        allowReactions: true,
         region: user?.region || '',
         prefecture: user?.prefecture || '',
         commune: user?.commune || '',
@@ -79,7 +112,17 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
         address: user?.address || '',
         latitude: user?.latitude || '',
         longitude: user?.longitude || '',
-        isPublic: true
+        location: {
+          region: user?.region || '',
+          prefecture: user?.prefecture || '',
+          commune: user?.commune || '',
+          quartier: user?.quartier || '',
+          address: user?.address || '',
+          coordinates: {
+            latitude: user?.latitude || '',
+            longitude: user?.longitude || ''
+          }
+        }
       });
       setMediaFiles([]);
     }
@@ -113,8 +156,10 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
     }
 
     const postData = {
+      title: formData.title,
       content: formData.content,
       type: formData.type,
+      category: formData.category,
       location: {
         region: formData.region,
         prefecture: formData.prefecture,
@@ -127,6 +172,8 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
         }
       },
       isPublic: formData.isPublic,
+      allowComments: formData.allowComments,
+      allowReactions: formData.allowReactions,
       media: mediaFiles
     };
 
@@ -138,8 +185,13 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
 
     if (!error) {
       setFormData({
+        title: '',
         content: '',
-        type: 'community',
+        type: 'general',
+        category: 'communautaire',
+        isPublic: true,
+        allowComments: true,
+        allowReactions: true,
         region: user?.region || '',
         prefecture: user?.prefecture || '',
         commune: user?.commune || '',
@@ -147,7 +199,17 @@ const CreatePostForm = ({ open, onClose, editPost = null }) => {
         address: user?.address || '',
         latitude: user?.latitude || '',
         longitude: user?.longitude || '',
-        isPublic: true
+        location: {
+          region: user?.region || '',
+          prefecture: user?.prefecture || '',
+          commune: user?.commune || '',
+          quartier: user?.quartier || '',
+          address: user?.address || '',
+          coordinates: {
+            latitude: user?.latitude || '',
+            longitude: user?.longitude || ''
+          }
+        }
       });
       setMediaFiles([]);
       onClose();

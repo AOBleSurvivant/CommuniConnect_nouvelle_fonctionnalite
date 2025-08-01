@@ -15,7 +15,7 @@ class MessagesService {
   // Récupérer les messages d'une conversation
   async getConversationMessages(conversationId, page = 1, limit = 50) {
     try {
-      const response = await api.get(`/messages/conversation/${conversationId}`, {
+      const response = await api.get(`/messages/conversations/${conversationId}/messages`, {
         params: { page, limit }
       });
       return response.data;
@@ -39,7 +39,7 @@ class MessagesService {
   // Créer une nouvelle conversation
   async createConversation(conversationData) {
     try {
-      const response = await api.post('/messages/conversation/create', conversationData);
+      const response = await api.post('/messages/conversations', conversationData);
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la création de la conversation:', error);
@@ -88,7 +88,7 @@ class MessagesService {
   // Créer une conversation privée avec un utilisateur
   async createPrivateConversation(userId) {
     try {
-      const response = await api.post('/messages/conversation/create', {
+      const response = await api.post('/messages/conversations', {
         type: 'private',
         participants: [userId]
       });

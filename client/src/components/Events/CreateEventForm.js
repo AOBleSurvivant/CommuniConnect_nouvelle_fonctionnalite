@@ -27,19 +27,36 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: '',
+    type: 'reunion',
+    category: 'communautaire',
     date: '',
     time: '',
+    venue: '',
+    address: '',
+    latitude: 9.537,
+    longitude: -13.6785,
+    capacity: 50,
+    maxParticipants: '',
+    contactPhone: '',
+    isFree: true,
+    price: { amount: 0, currency: 'GNF' },
+    // Correction: initialiser avec des valeurs vides pour éviter les erreurs MUI
     region: '',
     prefecture: '',
     commune: '',
     quartier: '',
-    address: '',
-    latitude: '',
-    longitude: '',
-    image: '',
-    contactPhone: '',
-    maxParticipants: ''
+    location: {
+      region: '',
+      prefecture: '',
+      commune: '',
+      quartier: '',
+      address: '',
+      venue: '',
+      coordinates: {
+        latitude: 9.537,
+        longitude: -13.6785
+      }
+    }
   });
 
   const [errors, setErrors] = useState({});
@@ -169,21 +186,18 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
         description: formData.description.trim(),
         type: formData.type,
         category: formData.category || 'communautaire',
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        venue: formData.venue.trim(),
+        startDate: formData.date,
+        endDate: formData.date,
+        startTime: formData.time,
+        endTime: formData.time,
+        venue: formData.address.trim(),
         address: formData.address.trim(),
-        capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
-        isFree: formData.isFree !== undefined ? formData.isFree : true,
-        price: formData.isFree ? { amount: 0, currency: 'GNF' } : {
-          amount: parseFloat(formData.price?.amount || 0),
-          currency: formData.price?.currency || 'GNF'
-        },
-        tags: formData.tags || [],
+        latitude: parseFloat(formData.latitude) || 9.5370,
+        longitude: parseFloat(formData.longitude) || -13.6785,
+        capacity: formData.maxParticipants ? parseInt(formData.maxParticipants) : undefined,
+        isFree: true,
+        price: { amount: 0, currency: 'GNF' },
         contactPhone: formData.contactPhone?.trim() || '',
-        contactEmail: formData.contactEmail?.trim() || '',
         location: {
           region: formData.region,
           prefecture: formData.prefecture,
@@ -191,8 +205,8 @@ const CreateEventForm = ({ onSubmit, loading = false }) => {
           quartier: formData.quartier,
           address: formData.address.trim(),
           coordinates: {
-            latitude: parseFloat(formData.latitude) || undefined,
-            longitude: parseFloat(formData.longitude) || undefined
+            latitude: parseFloat(formData.latitude) || 9.5370,
+            longitude: parseFloat(formData.longitude) || -13.6785
           }
         },
         image: formData.image || undefined

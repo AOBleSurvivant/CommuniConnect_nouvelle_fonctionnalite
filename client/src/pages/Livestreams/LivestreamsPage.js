@@ -60,6 +60,8 @@ import {
   fetchScheduledStreams,
   fetchAlertStreams,
   fetchCommunityStreams,
+  startLivestream,
+  joinLivestream,
   setFilters,
   clearFilters,
   clearError,
@@ -162,14 +164,46 @@ const LivestreamsPage = () => {
     setSelectedLivestream(null);
   };
 
+  const handleStartLivestream = async (livestream) => {
+    try {
+      await dispatch(startLivestream(livestream.id || livestream._id)).unwrap();
+      // Recharger les données après le démarrage
+      dispatch(fetchLivestreams(filters));
+      dispatch(fetchLiveStreams());
+      dispatch(fetchScheduledStreams());
+    } catch (error) {
+      console.error('Erreur lors du démarrage du live:', error);
+    }
+  };
+
+  const handleJoinLivestream = async (livestream) => {
+    try {
+      await dispatch(joinLivestream(livestream.id || livestream._id)).unwrap();
+      // Ouvrir le lecteur après avoir rejoint
+      setSelectedLivestream(livestream);
+    } catch (error) {
+      console.error('Erreur lors de la connexion au live:', error);
+    }
+  };
+
+  const handleLikeLivestream = (livestreamId) => {
+    // TODO: Implémenter la fonctionnalité de like
+    console.log('Like livestream:', livestreamId);
+  };
+
+  const handleReportLivestream = (livestreamId) => {
+    // TODO: Implémenter la fonctionnalité de signalement
+    console.log('Report livestream:', livestreamId);
+  };
+
   const getCurrentStreams = () => {
     switch (tabValue) {
-      case 0: return livestreams;
-      case 1: return liveStreams;
-      case 2: return scheduledStreams;
-      case 3: return alertStreams;
-      case 4: return communityStreams;
-      default: return livestreams;
+      case 0: return livestreams || [];
+      case 1: return liveStreams || [];
+      case 2: return scheduledStreams || [];
+      case 3: return alertStreams || [];
+      case 4: return communityStreams || [];
+      default: return livestreams || [];
     }
   };
 
@@ -417,11 +451,15 @@ const LivestreamsPage = () => {
                 </Paper>
               </Grid>
             ) : (
-              getCurrentStreams().map((livestream) => (
-                <Grid item xs={12} sm={6} md={4} key={livestream._id}>
+              (getCurrentStreams() || []).map((livestream, index) => (
+                <Grid item xs={12} sm={6} md={4} key={livestream._id || livestream.id || `livestream-${index}`}>
                   <LivestreamCard
                     livestream={livestream}
                     onClick={() => handleLivestreamClick(livestream)}
+                    onStart={handleStartLivestream}
+                    onJoin={handleJoinLivestream}
+                    onLike={handleLikeLivestream}
+                    onReport={handleReportLivestream}
                   />
                 </Grid>
               ))

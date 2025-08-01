@@ -203,14 +203,66 @@ const NotificationCenter = () => {
 
   return (
     <>
-      <Tooltip title="Notifications">
+      <Tooltip title="Notifications" arrow>
         <IconButton
           color="inherit"
           onClick={handleClick}
-          sx={{ position: 'relative' }}
+          sx={{ 
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 48,
+            minHeight: 48,
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              transform: 'scale(1.05)',
+            },
+            '&:active': {
+              transform: 'scale(0.95)',
+            },
+            transition: 'all 0.2s ease-in-out',
+            // Styles de débogage pour s'assurer que le bouton est visible
+            zIndex: 1000,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          }}
+          aria-describedby={id}
         >
-          <Badge badgeContent={unreadCount} color="error" max={99}>
-            {isConnected ? <NotificationsActive /> : <NotificationsOff />}
+          <Badge 
+            badgeContent={unreadCount || 0} 
+            color="error" 
+            max={99}
+            showZero={false}
+            sx={{
+              '& .MuiBadge-badge': {
+                backgroundColor: '#f44336',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                minWidth: '20px',
+                height: '20px',
+                borderRadius: '10px',
+              }
+            }}
+          >
+            {isConnected ? (
+              <NotificationsActive 
+                sx={{ 
+                  fontSize: 24,
+                  color: theme.palette.primary.main,
+                }} 
+              />
+            ) : (
+              <Notifications 
+                sx={{ 
+                  fontSize: 24,
+                  color: theme.palette.text.secondary,
+                }} 
+              />
+            )}
           </Badge>
         </IconButton>
       </Tooltip>
@@ -233,6 +285,8 @@ const NotificationCenter = () => {
             width: 400,
             maxHeight: 600,
             overflow: 'hidden',
+            boxShadow: theme.shadows[8],
+            border: `1px solid ${theme.palette.divider}`,
           }
         }}
       >
@@ -265,12 +319,12 @@ const NotificationCenter = () => {
           {/* Statistiques */}
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <Chip 
-              label={`${notificationStats.total} total`} 
+              label={`${notificationStats?.total || 0} total`} 
               size="small" 
               variant="outlined"
             />
             <Chip 
-              label={`${notificationStats.unread} non lues`} 
+              label={`${notificationStats?.unread || 0} non lues`} 
               size="small" 
               color="error"
             />

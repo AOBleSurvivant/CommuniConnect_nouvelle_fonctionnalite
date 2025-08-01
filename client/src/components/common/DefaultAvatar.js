@@ -39,6 +39,20 @@ const DefaultAvatar = ({
     return colors[index];
   };
 
+  // Fonction simple pour construire l'URL complète
+  const getProfilePictureUrl = (profilePicture) => {
+    if (!profilePicture) return null;
+    
+    // Si c'est déjà une URL complète, la retourner
+    if (profilePicture.startsWith('http')) {
+      return profilePicture;
+    }
+    
+    // Sinon, ajouter le baseURL
+    const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    return `${baseURL}${profilePicture}`;
+  };
+
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
       <Avatar
@@ -55,11 +69,15 @@ const DefaultAvatar = ({
       >
         {user?.profilePicture ? (
           <img 
-            src={user.profilePicture} 
+            src={getProfilePictureUrl(user.profilePicture)} 
             alt="Profile"
             onError={(e) => {
+              console.log('❌ Erreur de chargement de l\'image:', e.target.src);
               e.target.style.display = 'none';
               e.target.nextSibling.style.display = 'flex';
+            }}
+            onLoad={(e) => {
+              console.log('✅ Image chargée avec succès:', e.target.src);
             }}
           />
         ) : null}

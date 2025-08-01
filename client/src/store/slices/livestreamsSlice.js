@@ -249,7 +249,8 @@ const livestreamsSlice = createSlice({
       })
       .addCase(fetchLivestreams.fulfilled, (state, action) => {
         state.loading = false;
-        state.livestreams = action.payload.livestreams || action.payload;
+        // Extraire les données du format {success: true, data: [...]}
+        state.livestreams = action.payload.data || action.payload.livestreams || action.payload || [];
         if (action.payload.pagination) {
           state.pagination = action.payload.pagination;
         }
@@ -266,7 +267,8 @@ const livestreamsSlice = createSlice({
       })
       .addCase(fetchLiveStreams.fulfilled, (state, action) => {
         state.loading = false;
-        state.liveStreams = action.payload;
+        // Extraire les données du format {success: true, data: [...]}
+        state.liveStreams = action.payload.data || action.payload || [];
       })
       .addCase(fetchLiveStreams.rejected, (state, action) => {
         state.loading = false;
@@ -280,7 +282,8 @@ const livestreamsSlice = createSlice({
       })
       .addCase(fetchScheduledStreams.fulfilled, (state, action) => {
         state.loading = false;
-        state.scheduledStreams = action.payload;
+        // Extraire les données du format {success: true, data: [...]}
+        state.scheduledStreams = action.payload.data || action.payload || [];
       })
       .addCase(fetchScheduledStreams.rejected, (state, action) => {
         state.loading = false;
@@ -294,7 +297,8 @@ const livestreamsSlice = createSlice({
       })
       .addCase(fetchAlertStreams.fulfilled, (state, action) => {
         state.loading = false;
-        state.alertStreams = action.payload;
+        // Extraire les données du format {success: true, data: [...]}
+        state.alertStreams = action.payload.data || action.payload || [];
       })
       .addCase(fetchAlertStreams.rejected, (state, action) => {
         state.loading = false;
@@ -308,7 +312,8 @@ const livestreamsSlice = createSlice({
       })
       .addCase(fetchCommunityStreams.fulfilled, (state, action) => {
         state.loading = false;
-        state.communityStreams = action.payload;
+        // Extraire les données du format {success: true, data: [...]}
+        state.communityStreams = action.payload.data || action.payload || [];
       })
       .addCase(fetchCommunityStreams.rejected, (state, action) => {
         state.loading = false;

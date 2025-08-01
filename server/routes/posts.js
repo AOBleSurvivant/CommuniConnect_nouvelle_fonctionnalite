@@ -130,15 +130,13 @@ router.get('/', auth, async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        posts: paginatedPosts,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalPosts,
-          hasNextPage: endIndex < totalPosts,
-          hasPrevPage: page > 1
-        }
+      posts: paginatedPosts,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalPosts,
+        hasNextPage: endIndex < totalPosts,
+        hasPrevPage: page > 1
       }
     });
   } catch (error) {

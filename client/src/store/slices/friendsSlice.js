@@ -6,7 +6,7 @@ export const fetchFriends = createAsyncThunk(
   'friends/fetchFriends',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/friends/list');
+      const response = await api.get('/api/friends');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération des amis');
@@ -18,7 +18,7 @@ export const fetchFriendRequests = createAsyncThunk(
   'friends/fetchFriendRequests',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/friends/requests');
+      const response = await api.get('/api/friends/requests');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération des demandes');
@@ -30,7 +30,7 @@ export const sendFriendRequest = createAsyncThunk(
   'friends/sendFriendRequest',
   async (email, { rejectWithValue }) => {
     try {
-      const response = await api.post('/friends/request', { recipientId: email });
+      const response = await api.post('/api/friends/request', { recipientId: email });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors de l\'envoi de la demande');
@@ -42,7 +42,7 @@ export const acceptFriendRequest = createAsyncThunk(
   'friends/acceptFriendRequest',
   async (friendshipId, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/friends/accept/${friendshipId}`);
+      const response = await api.post(`/api/friends/accept/${friendshipId}`);
       return { friendshipId, ...response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors de l\'acceptation');
@@ -54,7 +54,7 @@ export const rejectFriendRequest = createAsyncThunk(
   'friends/rejectFriendRequest',
   async (friendshipId, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/friends/reject/${friendshipId}`);
+      const response = await api.post(`/api/friends/reject/${friendshipId}`);
       return { friendshipId, ...response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors du rejet');
@@ -66,7 +66,7 @@ export const removeFriend = createAsyncThunk(
   'friends/removeFriend',
   async (friendshipId, { rejectWithValue }) => {
     try {
-      const response = await api.delete(`/friends/remove/${friendshipId}`);
+      const response = await api.delete(`/api/friends/remove/${friendshipId}`);
       return { friendshipId, ...response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Erreur lors de la suppression');
@@ -111,7 +111,8 @@ const friendsSlice = createSlice({
       })
       .addCase(fetchFriends.fulfilled, (state, action) => {
         state.loading = false;
-        state.friends = action.payload.friends;
+        // Extraire les données du format {success: true, friends: [...]}
+        state.friends = action.payload.friends || action.payload.data || action.payload || [];
       })
       .addCase(fetchFriends.rejected, (state, action) => {
         state.loading = false;
@@ -125,7 +126,8 @@ const friendsSlice = createSlice({
       })
       .addCase(fetchFriendRequests.fulfilled, (state, action) => {
         state.loading = false;
-        state.friendRequests = action.payload.requests;
+        // Extraire les données du format {success: true, requests: [...]}
+        state.friendRequests = action.payload.requests || action.payload.data || action.payload || [];
       })
       .addCase(fetchFriendRequests.rejected, (state, action) => {
         state.loading = false;

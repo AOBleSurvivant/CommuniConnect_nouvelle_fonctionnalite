@@ -6,6 +6,33 @@ const { validateGuineanLocation } = require('../middleware/geographicValidation'
 const User = require('../models/User'); // Added missing import for User model
 const bcrypt = require('bcryptjs'); // Added missing import for bcrypt
 const auth = require('../middleware/auth'); // Added missing import for auth middleware
+const multer = require('multer');
+const path = require('path');
+
+// Configuration multer pour l'upload de fichiers
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'static/avatars/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seules les images sont autorisées'), false);
+    }
+  }
+});
 
 const router = express.Router();
 
@@ -223,6 +250,7 @@ router.post('/login', [
           quartier: this.quartier,
           role: this.role,
           isVerified: this.isVerified,
+          profilePicture: this.profilePicture,
           createdAt: this.createdAt
         };
       }
@@ -251,15 +279,30 @@ router.post('/login', [
 // @route   PUT /api/auth/profile/picture
 // @desc    Mettre à jour la photo de profil
 // @access  Private
-router.put('/profile/picture', auth, async (req, res) => {
+router.put('/profile/picture', auth, upload.single('profilePicture'), async (req, res) => {
   try {
-    // En mode développement, simuler l'upload avec une image locale
-    const mockImageUrl = `/api/static/avatars/${req.user.firstName?.charAt(0) || 'U'}.jpg`;
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier image fourni'
+      });
+    }
+
+    // En mode développement, simuler l'upload avec le fichier reçu
+    const imageUrl = `/api/static/avatars/${req.file.filename}`;
+    
+    console.log('📸 Upload de photo de profil:', {
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      url: imageUrl
+    });
     
     res.json({
       success: true,
       message: 'Photo de profil mise à jour avec succès',
-      profilePicture: mockImageUrl
+      profilePicture: imageUrl
     });
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la photo de profil:', error);

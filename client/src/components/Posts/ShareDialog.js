@@ -47,7 +47,15 @@ const ShareDialog = ({ open, onClose, post }) => {
   const shareUrl = `${window.location.origin}/post/${post?._id}`;
   const defaultShareText = `Regardez ce post de ${post?.author?.firstName || 'quelqu\'un'} sur CommuniConnect !`;
 
+  
   const handleRepost = async () => {
+    if (!post || !post._id) {
+      console.error('Erreur lors du repost: Le post original est requis pour un repost');
+      setSuccessMessage('Erreur: Post original requis');
+      setShowSuccess(true);
+      return;
+    }
+
     if (!shareText.trim()) {
       setShareText(defaultShareText);
       return;

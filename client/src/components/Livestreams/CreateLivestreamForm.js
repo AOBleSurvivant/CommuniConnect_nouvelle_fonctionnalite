@@ -56,17 +56,31 @@ const CreateLivestreamForm = ({ open, onClose }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: '',
-    urgency: 'medium',
-    visibility: 'quartier',
-    scheduledAt: '',
+    type: 'live',
+    category: 'general',
+    scheduledDate: '',
+    scheduledTime: '',
+    duration: 60,
+    maxViewers: 100,
+    isPublic: true,
+    allowComments: true,
+    allowReactions: true,
+    // Correction: initialiser avec des valeurs vides pour éviter les erreurs MUI
     region: '',
     prefecture: '',
     commune: '',
     quartier: '',
-    address: '',
-    latitude: '',
-    longitude: ''
+    location: {
+      region: '',
+      prefecture: '',
+      commune: '',
+      quartier: '',
+      address: '',
+      coordinates: {
+        latitude: 9.537,
+        longitude: -13.6785
+      }
+    }
   });
 
   const [errors, setErrors] = useState({});

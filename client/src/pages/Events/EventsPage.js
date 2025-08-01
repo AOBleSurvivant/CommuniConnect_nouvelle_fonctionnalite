@@ -106,10 +106,24 @@ const EventsPage = () => {
     }
   }, [success, dispatch]);
 
+  // Log de débogage pour surveiller les événements
+  useEffect(() => {
+    console.log('📊 État des événements:', {
+      count: events.length,
+      events: events.map(e => ({ id: e._id, title: e.title, status: e.status }))
+    });
+  }, [events]);
+
   const handleCreateEvent = async (eventData) => {
     try {
+      console.log('📤 Création d\'événement avec les données:', eventData);
       await dispatch(createEvent(eventData)).unwrap();
       setShowCreateDialog(false);
+      
+      // Rafraîchir la liste des événements après création
+      console.log('🔄 Rafraîchissement de la liste des événements...');
+      await dispatch(fetchEvents());
+      
     } catch (error) {
       console.error('Erreur lors de la création de l\'événement:', error);
     }
@@ -242,9 +256,19 @@ const EventsPage = () => {
     return typeMatch && statusMatch && searchMatch && myEventsMatch;
   });
 
-  const upcomingEvents = filteredEvents.filter(event => event.status === 'upcoming');
+  const upcomingEvents = filteredEvents.filter(event => 
+    event.status === 'upcoming' || event.status === 'published'
+  );
   const ongoingEvents = filteredEvents.filter(event => event.status === 'ongoing');
   const pastEvents = filteredEvents.filter(event => event.status === 'completed');
+
+  // Log de débogage pour le filtrage
+  console.log('🔍 Filtrage des événements:', {
+    total: events.length,
+    filtered: filteredEvents.length,
+    upcoming: upcomingEvents.length,
+    statuses: events.map(e => ({ id: e._id, title: e.title, status: e.status }))
+  });
 
   const getLocationText = (event) => {
     if (!event.location) return 'Lieu non spécifié';
@@ -253,19 +277,36 @@ const EventsPage = () => {
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    if (!date) return 'Date non spécifiée';
+    try {
+      return new Date(date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Erreur de formatage de date:', error, date);
+      return 'Date invalide';
+    }
   };
 
   const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!date) return 'Heure non spécifiée';
+    try {
+      return new Date(date).toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erreur de formatage d\'heure:', error, date);
+      return 'Heure invalide';
+    }
+  };
+
+  const formatEventTime = (event) => {
+    if (!event.startTime || !event.endTime) return 'Heure non spécifiée';
+    return `${event.startTime} - ${event.endTime}`;
   };
 
   return (
@@ -452,14 +493,14 @@ const EventsPage = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <CalendarIcon fontSize="small" color="action" sx={{ mr: 1 }} />
                           <Typography variant="caption" color="text.secondary">
-                            {formatDate(event.date)}
+                            {formatDate(event.startDate)}
                           </Typography>
                         </Box>
 
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <TimeIcon fontSize="small" color="action" sx={{ mr: 1 }} />
                           <Typography variant="caption" color="text.secondary">
-                            {formatTime(event.date)}
+                            {formatEventTime(event)}
                           </Typography>
                         </Box>
 
@@ -688,7 +729,7 @@ const EventsPage = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <CalendarIcon fontSize="small" color="action" sx={{ mr: 1 }} />
                           <Typography variant="caption" color="text.secondary">
-                            {formatDate(event.date)}
+                            {formatDate(event.startDate)}
                           </Typography>
                         </Box>
 
@@ -769,10 +810,9 @@ const EventsPage = () => {
         </DialogTitle>
         <DialogContent>
           <CreateEventForm 
-          open={showCreateDialog} 
-          onClose={() => setShowCreateDialog(false)} 
-          onSubmit={handleCreateEvent} 
-        />
+            onClose={() => setShowCreateDialog(false)} 
+            onSubmit={handleCreateEvent} 
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowCreateDialog(false)}>
@@ -782,24 +822,13 @@ const EventsPage = () => {
       </Dialog>
 
       {/* Dialog de détails d'événement */}
-      <Dialog 
-        open={showDetailsDialog} 
-        onClose={() => setShowDetailsDialog(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Détails de l'événement
-        </DialogTitle>
-        <DialogContent>
-          {selectedEvent && <EventDetails event={selectedEvent} />}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowDetailsDialog(false)}>
-            Fermer
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {selectedEvent && (
+        <EventDetails 
+          event={selectedEvent} 
+          open={showDetailsDialog} 
+          onClose={() => setShowDetailsDialog(false)} 
+        />
+      )}
 
       {/* Dialog de démarrage de livestream */}
       <Dialog 
